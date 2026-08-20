@@ -1,254 +1,155 @@
+const { config } = global.GoatBot;
 const { writeFileSync } = require("fs-extra");
 
 module.exports = {
-    config: {
-        name: "whitelist",
-        aliases: ["wl"],
-        version: "1.0",
-        author: "rX Abdullah",
-        countDown: 3,
-        role: 1, // botAdmin only (new system: 0=all, 1=botAdmin, 2=botAdmin+groupAdmin, 3=NDH/whitelist)
-        shortDescription: {
-            en: "Only whitelisted users can use the bot"
-        },
-        longDescription: {
-            en: "Turn whitelist mode on/off, add/remove users, view the list. When on, only listed users plus adminBot can use the bot. Thread whitelist: when on, the bot only runs in listed group threads (also works with E2EE group JIDs like xxxx@g.us)."
-        },
-        category: "admin",
-        guide: {
-            en:
-`— User whitelist —
-{pn} on          - turn whitelist mode on
-{pn} off         - turn whitelist mode off
-{pn} add <uid>   - add a user to the whitelist (reply or give uid)
-{pn} remove <uid>- remove a user from the whitelist
-{pn} list        - show who is on the whitelist
-{pn} ignore <cmd>- let a command work for everyone
-{pn} unignore <cmd> - remove that exemption
-
-— Thread whitelist (group) —
-{pn} threadon           - only whitelisted threads can use the bot
-{pn} threadoff          - turn off thread whitelist (all groups work)
-{pn} threadadd [tid]    - add current thread (or given tid) to whitelist
-{pn} threadremove [tid] - remove current thread (or given tid) from whitelist
-{pn} threadlist         - show whitelisted threads`
-        }
+  config: {
+    name: "whitelist",
+    aliases: ["wl"],
+    version: "1.6",
+    author: "NTKhang X EryXenX",
+    countDown: 5,
+    role: 3,
+    shortDescription: {
+      vi: "Bật/tắt, thêm, xóa quyền whiteListIds",
+      en: "Toggle, add, remove whiteListIds role"
     },
-
-    langs: {
-        en: {
-            on: "Whitelist mode is now on. Only whitelisted users can use the bot.",
-            off: "Whitelist mode is now off. Everyone can use the bot.",
-            alreadyOn: "Whitelist mode is already on.",
-            alreadyOff: "Whitelist mode is already off.",
-            added: "%1 added to the whitelist.",
-            alreadyIn: "%1 is already on the whitelist.",
-            removed: "%1 removed from the whitelist.",
-            notIn: "%1 is not on the whitelist.",
-            listEmpty: "Whitelist is empty.",
-            listHeader: "Whitelist Mode: %1\nWhitelist Users (%2):\n",
-            listItem: "  %1. %2\n",
-            ignoredHeader: "\nIgnore Commands:\n",
-            ignoredItem: "  - %1\n",
-            noUID: "Please give a UID or mention someone.",
-            ignoreCmdAdded: "'%1' is now exempt from whitelist.",
-            ignoreCmdExists: "'%1' is already in the ignore list.",
-            ignoreCmdRemoved: "'%1' removed from the ignore list.",
-            ignoreCmdNotIn: "'%1' is not in the ignore list.",
-            unknownSub: "Unknown subcommand. See {pn} help.",
-            noCmd: "Please give a command name.",
-
-            threadOn: "Thread whitelist mode is now on. Only whitelisted groups can use the bot.",
-            threadOff: "Thread whitelist mode is now off. The bot works in all groups.",
-            threadAlreadyOn: "Thread whitelist mode is already on.",
-            threadAlreadyOff: "Thread whitelist mode is already off.",
-            threadNotGroup: "This isn't a group thread. Only group threads can be added/removed.",
-            threadAdded: "Thread %1 added to the whitelist.",
-            threadAlreadyIn: "Thread %1 is already on the whitelist.",
-            threadRemoved: "Thread %1 removed from the whitelist.",
-            threadNotIn: "Thread %1 is not on the whitelist.",
-            threadListEmpty: "Thread whitelist is empty.",
-            threadListHeader: "Thread Whitelist Mode: %1\nWhitelisted Threads (%2):\n",
-            threadListItem: "  %1. %2\n"
-        }
+    longDescription: {
+      vi: "Bật/tắt, thêm, xóa quyền whiteListIds",
+      en: "Toggle, add, remove whiteListIds role"
     },
+    category: "owner",
+    guide: {
+      vi: "{pn} on/off: Bật hoặc tắt chế độ whitelist\n{pn} [add|-a] <uid|@tag>: Thêm quyền\n{pn} [remove|-r] <uid|@tag>: Xóa quyền\n{pn} [list|-l]: Xem danh sách",
+      en: "{pn} on/off: Toggle whitelist mode\n{pn} [add|-a] <uid|@tag>: Add role\n{pn} [remove|-r] <uid|@tag>: Remove role\n{pn} [list|-l]: List all"
+    },
+  },
 
-    onStart: async function ({ args, message, event, getLang }) {
-        const { config } = global.GoatBot;
-        const { threadID, isGroup } = event;
-        const wl = config.whitelist = config.whitelist || { status: false, ids: [], ignoreCommand: [], threadStatus: false, threadIds: [] };
-        if (!Array.isArray(wl.ids)) wl.ids = [];
-        if (!Array.isArray(wl.ignoreCommand)) wl.ignoreCommand = [];
-        if (typeof wl.threadStatus !== "boolean") wl.threadStatus = false;
-        if (!Array.isArray(wl.threadIds)) wl.threadIds = [];
+  langs: {
+    vi: {
+      toggledOn: "✅ | Đã bật chế độ whitelist.",
+      toggledOff: "❌ | Đã tắt chế độ whitelist.",
+      currentStatus: "🔄 | Trạng thái hiện tại: %1",
+      added: "✅ | Đã thêm quyền whiteListIds cho %1 người dùng:\n%2",
+      alreadyAdmin: "\n⚠ | %1 người dùng đã có quyền:\n%2",
+      missingIdAdd: "⚠ | Vui lòng nhập ID hoặc tag người dùng để thêm quyền",
+      removed: "✅ | Đã xóa quyền của %1 người dùng:\n%2",
+      notAdmin: "⚠ | %1 người dùng không có quyền:\n%2",
+      missingIdRemove: "⚠ | Vui lòng nhập ID hoặc tag người dùng để xóa quyền",
+      listAdmin: "👑 | Danh sách whiteListIds:\n%1",
+    },
+    en: {
+      toggledOn: "✅ | Whitelist mode has been turned ON.",
+      toggledOff: "❌ | Whitelist mode has been turned OFF.",
+      currentStatus: "🔄 | Current whitelist status: %1",
+      added: "✅ | Added role for %1 users:\n%2",
+      alreadyAdmin: "\n⚠ | %1 users already have role:\n%2",
+      missingIdAdd: "⚠ | Please enter ID or tag to add role",
+      removed: "✅ | Removed role of %1 users:\n%2",
+      notAdmin: "⚠ | %1 users don't have role:\n%2",
+      missingIdRemove: "⚠ | Please enter ID or tag to remove role",
+      listAdmin: "👑 | List of whiteListIds:\n%1",
+    },
+    bn: {
+      toggledOn: "✅ | হোয়াইটলিস্ট মোড চালু করা হয়েছে।",
+      toggledOff: "❌ | হোয়াইটলিস্ট মোড বন্ধ করা হয়েছে।",
+      currentStatus: "🔄 | বর্তমান স্ট্যাটাস: %1",
+      added: "✅ | %1 জন ইউজারকে whiteListIds পারমিশন দেওয়া হয়েছে:\n%2",
+      alreadyAdmin: "\n⚠ | %1 জন ইউজারের আগে থেকেই পারমিশন আছে:\n%2",
+      missingIdAdd: "⚠ | পারমিশন দেওয়ার জন্য ID অথবা ট্যাগ দিন",
+      removed: "✅ | %1 জন ইউজারের পারমিশন সরানো হয়েছে:\n%2",
+      notAdmin: "⚠ | %1 জন ইউজারের পারমিশন নেই:\n%2",
+      missingIdRemove: "⚠ | পারমিশন সরানোর জন্য ID অথবা ট্যাগ দিন",
+      listAdmin: "👑 | whiteListIds লিস্ট:\n%1",
+    },
+    tl: {
+      toggledOn: "✅ | Na-on na ang whitelist mode.",
+      toggledOff: "❌ | Na-off na ang whitelist mode.",
+      currentStatus: "🔄 | Kasalukuyang status: %1",
+      added: "✅ | Nabigyan ng whiteListIds role ang %1 user(s):\n%2",
+      alreadyAdmin: "\n⚠ | May role na ang %1 user(s):\n%2",
+      missingIdAdd: "⚠ | Pakilagay ang ID o i-tag ang user para magdagdag ng role",
+      removed: "✅ | Naalis ang role ng %1 user(s):\n%2",
+      notAdmin: "⚠ | Walang role ang %1 user(s):\n%2",
+      missingIdRemove: "⚠ | Pakilagay ang ID o i-tag ang user para tanggalin ang role",
+      listAdmin: "👑 | Listahan ng whiteListIds:\n%1",
+    },
+    hi: {
+      toggledOn: "✅ | Whitelist mode ON kar diya gaya hai.",
+      toggledOff: "❌ | Whitelist mode OFF kar diya gaya hai.",
+      currentStatus: "🔄 | Current status: %1",
+      added: "✅ | %1 user(s) ko whiteListIds role de diya gaya:\n%2",
+      alreadyAdmin: "\n⚠ | %1 user(s) ke paas pehle se role hai:\n%2",
+      missingIdAdd: "⚠ | Role add karne ke liye ID ya tag dein",
+      removed: "✅ | %1 user(s) ka role hata diya gaya:\n%2",
+      notAdmin: "⚠ | %1 user(s) ke paas role nahi hai:\n%2",
+      missingIdRemove: "⚠ | Role remove karne ke liye ID ya tag dein",
+      listAdmin: "👑 | whiteListIds ki list:\n%1",
+    },
+    ar: {
+      toggledOn: "✅ | تم تفعيل وضع القائمة البيضاء.",
+      toggledOff: "❌ | تم إيقاف وضع القائمة البيضاء.",
+      currentStatus: "🔄 | الحالة الحالية: %1",
+      added: "✅ | تم منح صلاحية whiteListIds لعدد %1 مستخدم:\n%2",
+      alreadyAdmin: "\n⚠ | يمتلك %1 مستخدم الصلاحية بالفعل:\n%2",
+      missingIdAdd: "⚠ | يرجى إدخال المعرف أو الإشارة إلى المستخدم لإضافة الصلاحية",
+      removed: "✅ | تمت إزالة صلاحية %1 مستخدم:\n%2",
+      notAdmin: "⚠ | لا يمتلك %1 مستخدم الصلاحية:\n%2",
+      missingIdRemove: "⚠ | يرجى إدخال المعرف أو الإشارة إلى المستخدم لإزالة الصلاحية",
+      listAdmin: "👑 | قائمة whiteListIds:\n%1",
+    },
+  },
 
-        const save = () => writeFileSync(global.client.dirConfig, JSON.stringify(config, null, 2));
+  onStart: async function ({ message, args, usersData, event, getLang, api }) {
+    switch (args[0]) {
+      case "on": {
+        config.whiteListMode.status = true;
+        writeFileSync(global.client.dirConfig, JSON.stringify(config, null, 2));
+        return message.reply(getLang("toggledOn"));
+      }
 
-        const sub = (args[0] || "").toLowerCase();
+      case "off": {
+        config.whiteListMode.status = false;
+        writeFileSync(global.client.dirConfig, JSON.stringify(config, null, 2));
+        return message.reply(getLang("toggledOff"));
+      }
 
-        // ——— on / off ———
-        if (sub === "on") {
-            if (wl.status === true) return message.reply(getLang("alreadyOn"));
-            wl.status = true;
-            save();
-            return message.reply(getLang("on"));
-        }
+      case "add": case "-a": case "+": {
+        if (!args[1]) return message.reply(getLang("missingIdAdd"));
+        let uids = Object.keys(event.mentions).length ? Object.keys(event.mentions) : event.messageReply ? [event.messageReply.senderID] : args.filter(arg => !isNaN(arg));
+        const notAdminIds = [], authorIds = [];
+        for (const uid of uids) (config.whiteListMode.whiteListIds.includes(uid) ? authorIds : notAdminIds).push(uid);
+        config.whiteListMode.whiteListIds.push(...notAdminIds);
+        const getNames = await Promise.all(uids.map(uid => usersData.getName(uid).then(name => ({ uid, name }))));
+        writeFileSync(global.client.dirConfig, JSON.stringify(config, null, 2));
+        return message.reply(
+          (notAdminIds.length ? getLang("added", notAdminIds.length, getNames.map(({ uid, name }) => `• ${name} (${uid})`).join("\n")) : "") +
+          (authorIds.length ? getLang("alreadyAdmin", authorIds.length, authorIds.map(uid => `• ${uid}`).join("\n")) : "")
+        );
+      }
 
-        if (sub === "off") {
-            if (wl.status !== true) return message.reply(getLang("alreadyOff"));
-            wl.status = false;
-            save();
-            return message.reply(getLang("off"));
-        }
+      case "remove": case "-r": case "-": {
+        if (!args[1]) return message.reply(getLang("missingIdRemove"));
+        let uids = Object.keys(event.mentions).length ? Object.keys(event.mentions) : event.messageReply ? [event.messageReply.senderID] : args.filter(arg => !isNaN(arg));
+        const notAdminIds = [], authorIds = [];
+        for (const uid of uids) (config.whiteListMode.whiteListIds.includes(uid) ? authorIds : notAdminIds).push(uid);
+        for (const uid of authorIds) config.whiteListMode.whiteListIds.splice(config.whiteListMode.whiteListIds.indexOf(uid), 1);
+        const getNames = await Promise.all(authorIds.map(uid => usersData.getName(uid).then(name => ({ uid, name }))));
+        writeFileSync(global.client.dirConfig, JSON.stringify(config, null, 2));
+        return message.reply(
+          (authorIds.length ? getLang("removed", authorIds.length, getNames.map(({ uid, name }) => `• ${name} (${uid})`).join("\n")) : "") +
+          (notAdminIds.length ? getLang("notAdmin", notAdminIds.length, notAdminIds.map(uid => `• ${uid}`).join("\n")) : "")
+        );
+      }
 
-        // ——— threadon / threadoff ———
-        if (sub === "threadon") {
-            if (wl.threadStatus === true) return message.reply(getLang("threadAlreadyOn"));
-            wl.threadStatus = true;
-            save();
-            return message.reply(getLang("threadOn"));
-        }
+      case "list": case "-l": {
+        const getNames = await Promise.all(config.whiteListMode.whiteListIds.map(uid => usersData.getName(uid).then(name => ({ uid, name }))));
+        return message.reply(getLang("listAdmin", getNames.map(({ uid, name }) => `• ${name} (${uid})`).join("\n")));
+      }
 
-        if (sub === "threadoff") {
-            if (wl.threadStatus !== true) return message.reply(getLang("threadAlreadyOff"));
-            wl.threadStatus = false;
-            save();
-            return message.reply(getLang("threadOff"));
-        }
-
-        // ——— threadadd ———
-        if (sub === "threadadd") {
-            const tid = resolveThreadID(args.slice(1), event, threadID, isGroup);
-            if (!tid) return message.reply(getLang("threadNotGroup"));
-            if (wl.threadIds.includes(tid)) return message.reply(getLang("threadAlreadyIn", tid));
-            wl.threadIds.push(tid);
-            save();
-            return message.reply(getLang("threadAdded", tid));
-        }
-
-        // ——— threadremove ———
-        if (sub === "threadremove" || sub === "threadrem" || sub === "threadrm") {
-            const tid = resolveThreadID(args.slice(1), event, threadID, isGroup);
-            if (!tid) return message.reply(getLang("threadNotGroup"));
-            const idx = wl.threadIds.indexOf(tid);
-            if (idx === -1) return message.reply(getLang("threadNotIn", tid));
-            wl.threadIds.splice(idx, 1);
-            save();
-            return message.reply(getLang("threadRemoved", tid));
-        }
-
-        // ——— threadlist ———
-        if (sub === "threadlist") {
-            const statusText = wl.threadStatus ? "ON" : "OFF";
-            if (wl.threadIds.length === 0) {
-                return message.reply(
-                    getLang("threadListHeader", statusText, 0) + getLang("threadListEmpty")
-                );
-            }
-            let text = getLang("threadListHeader", statusText, wl.threadIds.length);
-            wl.threadIds.forEach((tid, i) => {
-                text += getLang("threadListItem", i + 1, tid);
-            });
-            return message.reply(text.trim());
-        }
-
-        // ——— list ———
-        if (sub === "list") {
-            const statusText = wl.status ? "ON" : "OFF";
-            if (wl.ids.length === 0 && wl.ignoreCommand.length === 0) {
-                return message.reply(
-                    getLang("listHeader", statusText, 0) + getLang("listEmpty")
-                );
-            }
-            let text = getLang("listHeader", statusText, wl.ids.length);
-            wl.ids.forEach((uid, i) => {
-                text += getLang("listItem", i + 1, uid);
-            });
-            if (wl.ignoreCommand.length > 0) {
-                text += getLang("ignoredHeader");
-                wl.ignoreCommand.forEach(cmd => { text += getLang("ignoredItem", cmd); });
-            }
-            return message.reply(text.trim());
-        }
-
-        // ——— add ———
-        if (sub === "add") {
-            const uid = resolveUID(args.slice(1), event);
-            if (!uid) return message.reply(getLang("noUID"));
-            if (wl.ids.includes(uid)) return message.reply(getLang("alreadyIn", uid));
-            wl.ids.push(uid);
-            save();
-            return message.reply(getLang("added", uid));
-        }
-
-        // ——— remove ———
-        if (sub === "remove" || sub === "rem" || sub === "rm") {
-            const uid = resolveUID(args.slice(1), event);
-            if (!uid) return message.reply(getLang("noUID"));
-            const idx = wl.ids.indexOf(uid);
-            if (idx === -1) return message.reply(getLang("notIn", uid));
-            wl.ids.splice(idx, 1);
-            save();
-            return message.reply(getLang("removed", uid));
-        }
-
-        // ——— ignore <cmd> ———
-        if (sub === "ignore") {
-            const cmd = args[1];
-            if (!cmd) return message.reply(getLang("noCmd"));
-            if (wl.ignoreCommand.includes(cmd)) return message.reply(getLang("ignoreCmdExists", cmd));
-            wl.ignoreCommand.push(cmd);
-            save();
-            return message.reply(getLang("ignoreCmdAdded", cmd));
-        }
-
-        // ——— unignore <cmd> ———
-        if (sub === "unignore") {
-            const cmd = args[1];
-            if (!cmd) return message.reply(getLang("noCmd"));
-            const idx = wl.ignoreCommand.indexOf(cmd);
-            if (idx === -1) return message.reply(getLang("ignoreCmdNotIn", cmd));
-            wl.ignoreCommand.splice(idx, 1);
-            save();
-            return message.reply(getLang("ignoreCmdRemoved", cmd));
-        }
-
-        // ——— unknown ———
-        return message.reply(getLang("unknownSub"));
+      default: {
+        const status = config.whiteListMode.status ? "ON ✅" : "OFF ❌";
+        return message.reply(getLang("currentStatus", status));
+      }
     }
+  }
 };
-
-/**
- * Resolve a threadID to add/remove from the thread whitelist: either an
- * explicit tid passed as an arg, or (when none given) the current thread —
- * but only if the current thread is actually a group (isGroup === true),
- * since thread-whitelist only makes sense for groups. Works the same for
- * classic numeric thread IDs and E2EE group JIDs (e.g. "12345@g.us") —
- * both are just compared/stored as plain strings, no special parsing
- * needed for the "@g.us" suffix.
- */
-function resolveThreadID(args, event, currentThreadID, isGroup) {
-    const raw = args.join(" ").trim();
-    if (raw) return raw; // explicit tid given, trust it as-is (numeric or ...@g.us)
-    if (isGroup && currentThreadID) return String(currentThreadID);
-    return null;
-}
-
-/**
- * Resolve UID from args (plain uid string) or from event mentions/reply.
- */
-function resolveUID(args, event) {
-    // From reply
-    if (event.messageReply?.senderID) return String(event.messageReply.senderID);
-
-    // From @mention
-    const mentions = event.mentions || {};
-    const mentionIDs = Object.keys(mentions);
-    if (mentionIDs.length > 0) return String(mentionIDs[0]);
-
-    // From plain arg (numeric uid)
-    const raw = args.join("").trim();
-    if (raw && /^\d+$/.test(raw)) return raw;
-
-    return null;
-}
