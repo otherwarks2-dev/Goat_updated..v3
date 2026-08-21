@@ -486,8 +486,8 @@ async function uploadFile(api, threadID, filePath, kind) {
 
 module.exports = {
   config: {
-    name: "goatstore",
-    aliases: ["gs", "cmdstore", "commandstore"],
+    name: "commandstore",
+    aliases: ["cs", "cmdtore", "commandstore"],
     version: "7.2.0",
     author: "rX & EryXenX",
     countDown: 3,
