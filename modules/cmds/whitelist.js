@@ -8,7 +8,7 @@ module.exports = {
     version: "1.6",
     author: "NTKhang X EryXenX",
     countDown: 5,
-    role: 3,
+    role: 1,
     shortDescription: {
       vi: "Bật/tắt, thêm, xóa quyền whiteListIds",
       en: "Toggle, add, remove whiteListIds role"
