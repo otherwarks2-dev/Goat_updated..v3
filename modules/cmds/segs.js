@@ -9,7 +9,7 @@ module.exports = {
     name: "segs",
     version: "1.5",
     author: "Azadx69x",
-    role: 2,
+    role: 1,
     category: "18+",
     shortDescription: "𝐇𝐃 𝐕𝐢𝐝𝐞𝐨 𝐒𝐞𝐚𝐫𝐜𝐡 & 𝐃𝐨𝐰𝐧𝐥𝐨𝐚𝐝",
     longDescription: "𝐒𝐞𝐚𝐫𝐜𝐡 𝐟𝐨𝐫 𝐇𝐃 𝐯𝐢𝐝𝐞𝐨𝐬 𝐚𝐧𝐝 𝐝𝐨𝐰𝐧𝐥𝐨𝐚𝐝"

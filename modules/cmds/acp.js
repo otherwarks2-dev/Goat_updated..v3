@@ -7,7 +7,7 @@ module.exports = {
     version: "1.0",
     author: "Xnil6x | Saimx69x",
     countDown: 8,
-    role: 2,
+    role: 1,
     shortDescription: "manage friend requests",
     longDescription: "Accept or reject friend requests",
     category: "utility",

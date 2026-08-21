@@ -12,7 +12,7 @@ module.exports = {
         version: "1.0",
         author: "Rx",
         countDown: 5,
-        role: 2,
+        role: 1,
         description: {
             en: "Toggle E2EE (Labyrinth encrypted chat) and Anti-Inbox from config.json"
         },

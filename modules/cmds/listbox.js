@@ -3,7 +3,7 @@ module.exports = {
     name: "listbox",
     version: "1.1.0",
     author: "RS RIFAT",
-    role: 2,
+    role: 1,
     countDown: 10,
     shortDescription: {
       en: "List all groups bot is in and join them",

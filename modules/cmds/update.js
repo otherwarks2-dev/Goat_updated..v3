@@ -14,7 +14,7 @@ module.exports = {
     version: "2.0",
     author: "EryXenX",
     countDown: 10,
-    role: 3,
+    role: 1,
     category: "owner",
     description: {
       vi: "Kiểm tra và tự động cập nhật bot từ GitHub repo (config.json > gitUpdate)",

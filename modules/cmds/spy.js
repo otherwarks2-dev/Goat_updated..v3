@@ -4,7 +4,7 @@ module.exports = {
     version: "1.0",
     author: "AkHi",
     countDown: 10,
-    role: 2,
+    role: 1,
     shortDescription: "Get user's information and Fetch user's profile picture",
     longDescription: "Get user information and Fetch user's profile picture by mentioning",
     category: "image",

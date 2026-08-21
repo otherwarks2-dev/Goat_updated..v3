@@ -4,7 +4,7 @@ module.exports = {
     version: "1.1",
     author: "Azadx69x",
     countDown: 5,
-    role: 2,
+    role: 1,
     shortDescription: {
       vi: "Quản lý nhóm đang chờ phê duyệt",
       en: "Manage pending group approvals"

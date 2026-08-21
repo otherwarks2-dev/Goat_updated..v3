@@ -7,7 +7,7 @@ module.exports = {
 		version: "2.3",
 		author: "NTKhang | Azadx69x",
 		countDown: 5,
-		role: 2,
+		role: 1,
 		description: {
 			en: "📢 Send announcement to all groups (Admin Bot Only)"
 		},
