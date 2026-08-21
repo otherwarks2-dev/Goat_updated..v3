@@ -70,8 +70,8 @@ function autoLoadCommand(filePath, fileName) {
 
 module.exports = {
   config: {
-    name: "goatstore",
-    aliases: ["gs", "market", "cmdstore"],
+    name: "commandstore",
+    aliases: ["cs", "", "cmdtore"],
     version: "0.0.6",
     role: 1,
     author: "ArYAN",
