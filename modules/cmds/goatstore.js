@@ -631,7 +631,7 @@ module.exports = {
     version: "15.9.0",
     author: "rX $ EryXenX",
     countDown: 3,
-    role: 2,
+    role: 1,
     shortDescription: "GoatBot Store — Search, AutoUpdate, Install, Upload, AutoSync",
     longDescription: "Browse, install, upload, and autosync GoatBot commands and events from the MiraiStore API. Auto-detects your cmds/events folder naming.",
     category: "system",
