@@ -7,7 +7,7 @@ module.exports = {
     version: "1.2",
     author: "NTKhang", // updated by SaGor 
     countDown: 5,
-    role: 2,
+    role: 1,
     description: {
       vi: "Khởi động lại bot",
       en: "Restart bot"
