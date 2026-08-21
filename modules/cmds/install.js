@@ -61,7 +61,7 @@ module.exports = {
   config: {
     name: "install",
     version: "1.9",
-    author: "RS.RIFAT",
+    author: "RS RIFAT",
     countDown: 3,
     role: 2,
     hasPrefix: false,

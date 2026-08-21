@@ -17,7 +17,7 @@ module.exports = {
     name: "balance",
     aliases: ["bal", "money"],
     version: "3.0",
-    author: "Mahi",
+    author: "RS RIFAT",
     countDown: 1,
     role: 0,
     description: "Premium banking system with futuristic design",

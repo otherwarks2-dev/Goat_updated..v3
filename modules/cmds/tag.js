@@ -4,7 +4,7 @@ module.exports = {
     alises: ["mention"],
     category: 'box chat',
     role: 0,
-    author: '乛 Xꫀᥒos ゎ',
+    author: "RS RIFAT",
     countDown: 2,
     description: { en: 'Advanced tagging with a premium UI interface.' },
     guide: {

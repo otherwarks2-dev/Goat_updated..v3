@@ -6,7 +6,7 @@ module.exports = {
     aliases: ["cb"],
     version: "1.0.4",
     role: 0,
-    author: "Azadx69x",
+    author: "RS RIFAT",
     countDown: 0,
     category: "catbox",
     guide: {

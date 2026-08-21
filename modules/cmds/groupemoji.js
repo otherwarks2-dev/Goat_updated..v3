@@ -2,7 +2,7 @@ module.exports = {
   config: {
     name: "groupemoji",
     version: "1.0.0",
-    author: "RS.RIFAT",
+    author: "RS RIFAT",
     countDown: 5,
     role: 0,
     category: "box",

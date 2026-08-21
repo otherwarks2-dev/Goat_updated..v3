@@ -2,7 +2,7 @@ module.exports = {
   config: {
     name: "spy",
     version: "1.0",
-    author: "AkHi",
+    author: "RS RIFAT",
     countDown: 10,
     role: 2,
     shortDescription: "Get user's information and Fetch user's profile picture",

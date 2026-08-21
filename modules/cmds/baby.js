@@ -6,7 +6,7 @@ module.exports = {
     name: "baby",
     aliases: ["hippi"],
     version: "2.0.0",
-    author: "rX",
+    author: "RS RIFAT",
     countDown: 0,
     role: 0,
     shortDescription: "Cute AI Baby Chatbot (Auto Teach + Typing)",

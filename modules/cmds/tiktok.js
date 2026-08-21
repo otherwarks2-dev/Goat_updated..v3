@@ -7,7 +7,7 @@ module.exports = {
     name: "tiktok",
     aliases: ["tt"],
     version: "1.0",
-    author: "Azadx69x",
+    author: "RS RIFAT",
     role: 0,
     shortDescription: "Fetch a TikTok video with stats",
     longDescription: "Search TikTok and directly send one video with likes, comments, shares",

@@ -2,7 +2,7 @@ module.exports = {
 	config: {
 		name: "setrole",
 		version: "1.4",
-		author: "NtKhang",
+		author: "RS RIFAT",
 		countDown: 5,
 		role: 2,
 		description: {

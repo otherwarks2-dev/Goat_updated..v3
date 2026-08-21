@@ -7,7 +7,7 @@ module.exports = {
     name: "anime",
     aliases: ["ani"],
     version: "0.0.8",
-    author: "Azadx69x",
+    author: "RS RIFAT",
     role: 0,
     shortDescription: "Random Anime Video",
     longDescription: "random anime videos.",

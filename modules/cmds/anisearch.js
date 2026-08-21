@@ -12,7 +12,7 @@ module.exports = {
     name: "anisearch",
     aliases: ["amv"],
     version: "0.0.7",
-    author: "Azadx69x",
+    author: "RS RIFAT",
     role: 0,
     category: "anime",
     usePrefix: false,

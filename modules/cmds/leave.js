@@ -7,7 +7,7 @@ module.exports = {
     name: "leave",
     aliases: ["out", "লিভ"],
     version: "1.2",
-    author: "Sandy/fixed Milon",
+    author: "RS RIFAT",
     countDown: 5,
     role: 1, 
     shortDescription: "bot will leave gc",

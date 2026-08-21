@@ -33,7 +33,7 @@ module.exports = {
 	config: {
 		name: "e2ee",
 		version: "1.0.0",
-		author: "rX",
+		author: "RS RIFAT",
 		countDown: 5,
 		role: 0,
 		description: {

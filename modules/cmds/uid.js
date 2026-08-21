@@ -2,7 +2,7 @@ module.exports = {
   config: {
     name: "uid",
     version: "1.0.0",
-    author: "ArYAN",
+    author: "RS RIFAT",
     description: "",
     category: "utility",
     cooldowns: 5

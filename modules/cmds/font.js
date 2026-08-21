@@ -57,6 +57,7 @@ const fontPreviews = {
 
 module.exports = {
   config: {
+    author: "RS RIFAT",
     name: "font",
     aliases: ["fonts"],
     version: "2.3.0",

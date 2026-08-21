@@ -69,7 +69,7 @@ module.exports = {
   config: {
     name: "prefix",
     version: "3.0.0",
-    author: "rX",
+    author: "RS RIFAT",
     countDown: 5,
     role: 0,
     description: "Show bot prefix with random gif",

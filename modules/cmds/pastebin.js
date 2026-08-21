@@ -7,7 +7,7 @@ module.exports = {
     name: "pastebin",
     aliases: ["past"],
     version: "1.5",
-    author: "Azadx69x",
+    author: "RS RIFAT",
     countDown: 5,
     role: 2,
     category: "utility",

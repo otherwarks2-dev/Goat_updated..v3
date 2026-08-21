@@ -12,7 +12,7 @@ module.exports = {
     name: "update",
     aliases: ["gitupdate", "selfupdate"],
     version: "2.0",
-    author: "EryXenX",
+    author: "RS RIFAT",
     countDown: 10,
     role: 3,
     category: "owner",

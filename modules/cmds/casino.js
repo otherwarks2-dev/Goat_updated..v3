@@ -38,7 +38,7 @@ module.exports = {
   config: {
     name: "casino",
     version: "2.1.0",
-    author: "Azadx69x",
+    author: "RS RIFAT",
     role: 0,
     category: "games",
     guide: "{p}casino"

@@ -8,7 +8,7 @@ module.exports = {
     name: "animealbum",
     aliases: ["anialbum"],
     version: "1.0",
-    author: "Saimx69x",
+    author: "RS RIFAT",
     countDown: 2,
     role: 0,
     description:

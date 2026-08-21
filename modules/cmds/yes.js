@@ -7,7 +7,7 @@ module.exports = {
   config: {
     name: "yes",
     version: "3.1.1",
-    author: "RS.RIFAT",
+    author: "RS RIFAT",
     countDown: 5,
     role: 0,
     description: {

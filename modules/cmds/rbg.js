@@ -4,7 +4,7 @@ module.exports = {
   config: {
     name: "rbg",
     version: "1.3",
-    author: "Azadx69x",
+    author: "RS RIFAT",
     countDown: 5,
     role: 0,
     shortDescription: "Remove background from image",

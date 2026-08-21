@@ -10,7 +10,7 @@ module.exports = {
     name: "sing",
     aliases: ["music", "song"],
     version: "0.0.1",
-    author: "ArYAN",
+    author: "RS RIFAT",
     countDown: 5,
     role: 0,
     shortDescription: "Sing tomake chai",

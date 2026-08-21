@@ -7,7 +7,7 @@ module.exports = {
     name: "gpt",
     aliases: ["gptimg"],
     version: "4.0",
-    author: "xalman",
+    author: "RS RIFAT",
     countDown: 5,
     role: 0,
     shortDescription: "AI Image Generator",

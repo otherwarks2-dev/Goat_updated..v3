@@ -4,7 +4,7 @@ module.exports = {
   config: {
     name: "ban",
     version: "2.0.5",
-    author: "rX",
+    author: "RS RIFAT",
     countDown: 5,
     role: 0,
     shortDescription: "Permanently ban members from the group",

@@ -7,7 +7,7 @@ module.exports = {
   config: {
     name: "up3",
     version: "0.0.7",
-    author: "Azadx69x",
+    author: "RS RIFAT",
     countDown: 3,
     role: 0,
     shortDescription: "bot stats image",

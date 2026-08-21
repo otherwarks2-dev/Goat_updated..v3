@@ -2,7 +2,7 @@ module.exports = {
 	config: {
 		name: "setalias",
 		version: "1.8",
-		author: "NtKhang",
+		author: "RS RIFAT",
 		countDown: 5,
 		role: 0,
 		description: {

@@ -10,7 +10,7 @@ module.exports = {
     name: "nanobanana",
     aliases: ["nb", "nano"],
     version: "1.1", 
-    author: "NeoKEX",
+    author: "RS RIFAT",
     countDown: 15,
     role: 0,
     longDescription: "Generate an image using Pollinations AI with an optional seed.",

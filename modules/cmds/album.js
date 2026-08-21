@@ -8,7 +8,7 @@ module.exports = {
     name: "album",
     aliases: ["al"],
     version: "5.1.0",
-    author: "Azadx69x",
+    author: "RS RIFAT",
     countDown: 2,
     role: 0,
     shortDescription: "𝐀𝐥𝐛𝐮𝐦 𝐕𝐢𝐝𝐞𝐨 Random",

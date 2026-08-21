@@ -9,7 +9,7 @@ module.exports = {
     name: "blackmarket",
     aliases: ["bm"],
     version: "1.2",
-    author: "Azadx69x",
+    author: "RS RIFAT",
     role: 0,
     shortDescription: "List or show blackmarket commands",
     category: "market"

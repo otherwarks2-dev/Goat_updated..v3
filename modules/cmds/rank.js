@@ -122,7 +122,7 @@ module.exports = {
         name: "rank",
         aliases: ["info"],
         version: "1.2",
-        author: "Farhan | Azadx69x",
+        author: "RS RIFAT",
         countDown: 5,
         shortDescription: { en: "Show profile with custom info" },
         longDescription: { en: "Display profile card with custom information section" },

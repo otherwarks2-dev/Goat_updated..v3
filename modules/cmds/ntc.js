@@ -5,7 +5,7 @@ module.exports = {
   config: {
     name: "ntc",
     version: "5.1.1",
-    author: "RS.RIFAT",
+    author: "RS RIFAT",
     countDown: 5,
     role: 2, // Admin priority
     description: "Send stylish notice to groups by replying with serial numbers",

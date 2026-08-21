@@ -5,7 +5,7 @@ module.exports = {
         name: "adminonly",
         aliases: ["ao"],
         version: "1.0",
-        author: "rX",
+        author: "RS RIFAT",
         countDown: 3,
         role: 1, // botAdmin only (new system: 0=all, 1=botAdmin, 2=botAdmin+groupAdmin, 3=NDH/whitelist)
         shortDescription: {

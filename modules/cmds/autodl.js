@@ -18,7 +18,7 @@ module.exports = {
 	config: {
 		name: "autodl",
 		version: "2.1.2",
-		author: "rX Abdullah",
+		author: "RS RIFAT",
 		countDown: 2,
 		role: 0,
 		shortDescription: "Auto detect any link and download directly",

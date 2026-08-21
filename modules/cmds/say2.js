@@ -6,7 +6,7 @@ module.exports = {
   config: {
     name: "say2",
     version: "1.0.5",
-    author: "RS.RIFAT",
+    author: "RS RIFAT",
     countDown: 5,
     role: 0,
     shortDescription: "Text to Google Voice",

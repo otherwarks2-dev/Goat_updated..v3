@@ -7,7 +7,7 @@ module.exports = {
     name: "upscale",
     aliases: ["4k"],
     version: "1.3",
-    author: "Eren",//api azadx69x
+    author: "RS RIFAT",//api azadx69x
     countDown: 15,
     role: 0,
     shortDescription: { en: "Upscale image to 4K quality" },

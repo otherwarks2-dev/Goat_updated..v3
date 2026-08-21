@@ -3,7 +3,7 @@ module.exports = {
 		name: "unsend",
 		aliases: ["rmv", "u", "uns"],
 		version: "1.2",
-		author: "NTKhang",
+		author: "RS RIFAT",
 		countDown: 5,
 		role: 0,
 		description: {

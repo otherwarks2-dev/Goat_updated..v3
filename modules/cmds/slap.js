@@ -6,7 +6,7 @@ module.exports = {
   config: {
     name: "slap",
     version: "1.2",
-    author: "NTKhang | Fixed by Charles MK",
+    author: "RS RIFAT",
     countDown: 5,
     role: 0,
     shortDescription: { en: "Batslap image" },

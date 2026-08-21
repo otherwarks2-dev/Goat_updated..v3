@@ -12,7 +12,7 @@ module.exports = {
   config: {
     name: "age",
     version: "2.1",
-    author: "RS.RIFAT",
+    author: "RS RIFAT",
     countDown: 5,
     role: 0,
     category: "utility",

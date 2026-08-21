@@ -5,7 +5,7 @@ module.exports = {
 		name: "setleave",
 		aliases: ["setl"],
 		version: "1.7",
-		author: "NtKhang",
+		author: "RS RIFAT",
 		countDown: 5,
 		role: 0,
 		description: {

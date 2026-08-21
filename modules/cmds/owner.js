@@ -6,7 +6,7 @@ module.exports = {
   config: {
     name: "owner",
     version: "1.5.0",
-    author: "Mᴏʜᴀᴍᴍᴀᴅ Aᴋᴀsʜ",
+    author: "RS RIFAT",
     role: 0,
     shortDescription: "Owner info",
     category: "Information",

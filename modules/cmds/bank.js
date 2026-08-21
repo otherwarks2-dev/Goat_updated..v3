@@ -6,7 +6,7 @@ module.exports = {
     config: {
         name: "bank",
         version: "2.0-premium",
-        author: "Azadx69x",
+        author: "RS RIFAT",
         role: 0,
         shortDescription: "Banking System",
         longDescription: "Full banking with ATM card generator, multiple designs with professional layout.",

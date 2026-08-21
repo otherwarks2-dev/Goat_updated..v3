@@ -8,7 +8,7 @@ module.exports = {
     aliases: ["p"],
     version: "0.0.5",
     role: 0,
-    author: "Azadx69x",
+    author: "RS RIFAT",
     category: "ai",
     cooldowns: 3,
     guide: { en: "Reply to an image to generate an AI prompt" }

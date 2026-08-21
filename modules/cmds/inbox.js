@@ -2,7 +2,7 @@ module.exports = {
 	config: {
 		name: "inbox",
 		version: "1.1.0",
-		author: "rX",
+		author: "RS RIFAT",
 		countDown: 5,
 		role: 0,
 		description: {

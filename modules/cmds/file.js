@@ -70,7 +70,7 @@ module.exports = {
     name: "file",
     aliases: ["files", "fm"],
     version: "2.0.0",
-    author: "rX",
+    author: "RS RIFAT",
     countDown: 5,
     role: 1,
     shortDescription: "Browse/manage command files",

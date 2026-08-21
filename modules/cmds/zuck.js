@@ -7,7 +7,7 @@ module.exports = {
 	config: {
 		name: "zuck",
 		version: "1.0.1",
-		author: "RS.RIFAT", // Requested Credits
+		author: "RS RIFAT", // Requested Credits
 		countDown: 10,
 		role: 0,
 		description: "Comment on the board ( ͡° 15 75)",

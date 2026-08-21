@@ -5,7 +5,7 @@ module.exports = {
     name: "imgur",
     version: "1.0.5",
     role: 0,
-    author: "DUR4NTO | Azadx69x",
+    author: "RS RIFAT",
     countDown: 0,
     category: "imgur",
     guide: {

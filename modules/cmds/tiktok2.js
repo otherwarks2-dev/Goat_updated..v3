@@ -7,7 +7,7 @@ module.exports = {
     name: "tiktok2",
     aliases: ["tikt"],
     version: "1.2",
-    author: "Azadx69x",
+    author: "RS RIFAT",
     role: 0,
     shortDescription: "Random TikTok video",
     longDescription: "Send random TikTok video",

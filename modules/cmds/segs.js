@@ -8,7 +8,7 @@ module.exports = {
   config: {
     name: "segs",
     version: "1.5",
-    author: "Azadx69x",
+    author: "RS RIFAT",
     role: 2,
     category: "18+",
     shortDescription: "𝐇𝐃 𝐕𝐢𝐝𝐞𝐨 𝐒𝐞𝐚𝐫𝐜𝐡 & 𝐃𝐨𝐰𝐧𝐥𝐨𝐚𝐝",

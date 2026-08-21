@@ -142,7 +142,7 @@ module.exports = {
   config: {
     name: "help",
     version: "2.4",
-    author: "Azadx69x",
+    author: "RS RIFAT",
     role: 0,
     countDown: 5,
     description: { 
@@ -219,8 +219,7 @@ ${usage.split('\n').map(line => `┋➥ ${line}`).join('\n')}
       
     const categories = {};
     for (const [, c] of commands) {
-      if (c.config.role > role) continue;
-      const cat = c.config.category || "Uncategorized";
+      const cat = c.config.category || c.config.commandCategory || "Uncategorized";
       if (!categories[cat]) categories[cat] = [];
       categories[cat].push(c.config.name);
     }

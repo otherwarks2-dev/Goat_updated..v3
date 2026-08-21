@@ -5,7 +5,7 @@ module.exports = {
 		name: "notification",
 		aliases: ["notify"],
 		version: "2.3",
-		author: "NTKhang | Azadx69x",
+		author: "RS RIFAT",
 		countDown: 5,
 		role: 2,
 		description: {
