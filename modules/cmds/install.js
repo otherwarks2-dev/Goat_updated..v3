@@ -63,7 +63,7 @@ module.exports = {
     version: "1.9",
     author: "RS.RIFAT",
     countDown: 3,
-    role: 2,
+    role: 1,
     hasPrefix: false,
     description: "Install command from GoatStore / URL / code",
     category: "owner"

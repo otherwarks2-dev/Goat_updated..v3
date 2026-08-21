@@ -6,7 +6,7 @@ module.exports = {
   config: {
     name: "give",
     version: "1.5",
-    role: 2, // Only Bot Admins
+    role: 1, // Only Bot Admins
     author: "rX Abdullah",
     shortDescription: "Upload local command files to pastebin/file service",
     longDescription: "Upload local command files to a pastebin service for admins.",

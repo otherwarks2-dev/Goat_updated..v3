@@ -27,7 +27,7 @@ module.exports = {
         version: "1.1",
         author: "Rx Abdullah (fixed for auto-loader)",
         countDown: 5,
-        role: 2,
+        role: 1,
         category: "owner",
         description: { en: "Install & manage commands (with replace on exist)" },
         guide: {

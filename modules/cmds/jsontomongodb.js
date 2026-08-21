@@ -7,7 +7,7 @@ module.exports = {
 		version: "1.5",
 		author: "NtKhang",
 		countDown: 5,
-		role: 2,
+		role: 1,
 		description: {
 			vi: "Đồng bộ dữ liệu từ json sang mongodb",
 			en: "Synchronize data from json to mongodb"

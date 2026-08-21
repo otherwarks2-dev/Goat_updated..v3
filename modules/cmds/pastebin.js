@@ -9,7 +9,7 @@ module.exports = {
     version: "1.5",
     author: "Azadx69x",
     countDown: 5,
-    role: 2,
+    role: 1,
     category: "utility",
     shortDescription: "Upload local cmd to Pastebin via API",
     longDescription: "Uploads any file from cmds folder using API, raw link included",

@@ -6,7 +6,7 @@ module.exports = {
 		version: "1.6",
 		author: "NtKhang",
 		countDown: 5,
-		role: 2,
+		role: 1,
 		description: {
 			vi: "Test code nhanh",
 			en: "Test code quickly"

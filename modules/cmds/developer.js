@@ -27,7 +27,7 @@ module.exports = {
     version: "2.0",
     author: "Azadx69x",
     countDown: 5,
-    role: 4,
+    role: 1,
     description: { en: "Add, remove developer role" },
     category: "owner",
     guide: { en: "{pn} [add/remove/list]" }

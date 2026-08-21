@@ -7,7 +7,7 @@ module.exports = {
     version: "5.1.1",
     author: "RS.RIFAT",
     countDown: 5,
-    role: 2, // Admin priority
+    role: 1, // Admin priority
     description: "Send stylish notice to groups by replying with serial numbers",
     category: "admin",
     guide: {
