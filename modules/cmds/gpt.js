@@ -1,86 +1,50 @@
 const axios = require("axios");
-const fs = require("fs-extra");
-const path = require("path");
 
 module.exports = {
-  config: {
-    name: "gpt",
-    aliases: ["gptimg"],
-    version: "4.0",
-    author: "xalman",
-    countDown: 5,
-    role: 0,
-    shortDescription: "AI Image Generator",
-    category: "ai"
-  },
+	config: {
+		name: "youai",
+		aliases: ["you", "youchat", "ai", "gpt", "gemini"],
+		version: "1.0",
+		author: "nexo_here",
+		countDown: 5,
+		role: 0,
+		shortDescription: "Chat with You AI",
+		longDescription: "Send a message and get a friendly AI response with related questions",
+		category: "ai",
+		guide: {
+			en: "{pn} <your message>"
+		}
+	},
 
-  onStart: async function ({ message, args, event, api }) {
-    try {
+	langs: {
+		en: {
+			noInput: "⚠️ Please type something to ask.",
+			loading: "🧠 Thinking...",
+			error: "❌ Failed to get response from You AI."
+		}
+	},
 
-      const prompt = args.join(" ");
+	onStart: async function ({ message, args, getLang }) {
+		const input = args.join(" ");
+		if (!input) return message.reply(getLang("noInput"));
 
-      if (!prompt && event.type !== "message_reply") {
-        return message.reply("❌ Give prompt or reply image");
-      }
+		message.reply(getLang("loading"));
 
-      let imageUrl = "";
+		try {
+			const apiUrl = `https://betadash-api-swordslush-production.up.railway.app/you?chat=${encodeURIComponent(input)}`;
+			const res = await axios.get(apiUrl);
 
-      if (event.type === "message_reply") {
-        const att = event.messageReply.attachments?.[0];
-        if (att?.type === "photo") {
-          imageUrl = att.url;
-        }
-      }
+			const data = res.data;
+			if (!data || !data.response) return message.reply(getLang("error"));
 
-      api.setMessageReaction("⏳", event.messageID, () => {}, true);
+			const related = data.relatedSearch?.length
+				? "\n\n💡 Related:\n" + data.relatedSearch.map((r, i) => `• ${r}`).join("\n")
+				: "";
 
-      const apiUrl = imageUrl
-        ? `https://xalman-apis.vercel.app/api/gptimg?prompt=${encodeURIComponent(prompt)}&image_url=${encodeURIComponent(imageUrl)}`
-        : `https://xalman-apis.vercel.app/api/gptimg?prompt=${encodeURIComponent(prompt)}`;
-
-      const img = await axios({
-        url: apiUrl,
-        method: "GET",
-        responseType: "arraybuffer"
-      });
-
-      const trashDir = path.join(__dirname, "cache", "trash");
-      fs.ensureDirSync(trashDir);
-
-      const filePath = path.join(trashDir, `gpt_${Date.now()}.jpg`);
-
-      fs.writeFileSync(filePath, img.data);
-
-      api.setMessageReaction("✅", event.messageID, () => {}, true);
-
-      const caption = imageUrl
-        ? `━━━━━━━━━━━━━━━\n✨ EDITED IMAGE\n━━━━━━━━━━━━━━━\n🎨 ${prompt}\n━━━━━━━━━━━━━━━`
-        : `━━━━━━━━━━━━━━━\n🌟 GENERATED IMAGE\n━━━━━━━━━━━━━━━\n🎨 ${prompt}\n━━━━━━━━━━━━━━━`;
-
-      await message.reply({
-        body: caption,
-        attachment: fs.createReadStream(filePath)
-      });
-
-     
-      setTimeout(() => {
-        try {
-          fs.unlinkSync(filePath);
-        } catch (e) {}
-      }, 3000);
-
-    } catch (err) {
-      console.log(err);
-
-      api.setMessageReaction("❌", event.messageID, () => {}, true);
-
-      return message.reply(
-        "━━━━━━━━━━━━━━━\n" +
-        "❌ ERROR GENERATION\n" +
-        "━━━━━━━━━━━━━━━\n" +
-        "⚠️ Try again later\n" +
-        "━━━━━━━━━━━━━━━"
-      );
-    }
-  }
+			return message.reply(`🧠 ${data.response}${related}`);
+		} catch (err) {
+			console.error("YouAI Error:", err.message || err);
+			return message.reply(getLang("error"));
+		}
+	}
 };

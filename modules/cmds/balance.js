@@ -1,229 +1,156 @@
-const fs = require("fs");
-const path = require("path");
-const { createCanvas, loadImage, registerFont } = require("canvas");
-const axios = require("axios");
-
-try {
-  registerFont(path.join(__dirname, "fonts", "Poppins-Bold.ttf"), { family: "Poppins", weight: "bold" });
-  registerFont(path.join(__dirname, "fonts", "Poppins-Regular.ttf"), { family: "Poppins" });
-  registerFont(path.join(__dirname, "fonts", "Poppins-SemiBold.ttf"), { family: "Poppins", weight: "600" });
-  registerFont(path.join(__dirname, "fonts", "Montserrat-Bold.ttf"), { family: "Montserrat", weight: "bold" });
-} catch (e) {}
-
 const { config } = global.GoatBot;
+const { createCanvas, loadImage, registerFont } = require('canvas');
+const fs = require('fs-extra');
+const path = require('path');
+const axios = require('axios');
+
+const nx_210 = "xalman";
 
 module.exports = {
-  config: {
-    name: "balance",
-    aliases: ["bal", "money"],
-    version: "3.0",
-    author: "Mahi",
-    countDown: 1,
-    role: 0,
-    description: "Premium banking system with futuristic design",
-    category: "economy",
-    guide: { en: "" }
-  },
+    config: {
+        name: "balance",
+        aliases: ["bal", "money"],
+        version: "4.2.0",
+        author: "xalman",
+        countDown: 5,
+        role: 0,
+        description: "View your premium neon balance card",
+        category: "economy",
+        guide: { en: "{pn} | {pn} @tag" }
+    },
 
-  onStart: async function ({ message, usersData, event, args, api }) {
-    const senderID = event.senderID;
-    const allowedUIDs = [...config.adminBot];
+    onStart: async function ({ message, usersData, event, args }) {
+        const senderID = event.senderID;
 
-    const formatMoney = (num) => {
-      const units = ["", "K", "M", "B", "T", "Q", "Qi", "Sx", "Sp", "Oc", "N", "D"];
-      let unit = 0;
-      let number = Number(num);
+        const formatBalance = (num) => {
+            const n = Number(num);
+            if (n === Infinity || isNaN(n) || n >= 1e15) return "∞ Unlimited";
+            if (n >= 1e9) return (n / 1e9).toFixed(1) + 'B';
+            if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+            if (n >= 1e3) return (n / 1e3).toFixed(1) + 'k';
+            return n.toLocaleString();
+        };
 
-      while (number >= 1000 && unit < units.length - 1) {
-        number /= 1000;
-        unit++;
-      }
+        const getTargetUID = () => {
+            if (event.messageReply) return event.messageReply.senderID;
+            if (Object.keys(event.mentions).length > 0) return Object.keys(event.mentions)[0];
+            if (args[0] && !isNaN(args[0])) return args[0];
+            return null;
+        };
 
-      return `${number.toFixed(2)}${units[unit]}`;
-    };
+        const createUniqueCard = async (name, balance, uid) => {
+            const canvas = createCanvas(800, 450);
+            const ctx = canvas.getContext('2d');
 
-    const isValidAmount = (value) => {
-      const num = Number(value);
-      return !isNaN(num) && num > 0;
-    };
+            const gradient = ctx.createLinearGradient(0, 0, 800, 450);
+            gradient.addColorStop(0, '#0f0c29');
+            gradient.addColorStop(0.5, '#302b63');
+            gradient.addColorStop(1, '#24243e');
+            ctx.fillStyle = gradient;
+            
+            ctx.beginPath();
+            ctx.roundRect(0, 0, 800, 450, 30);
+            ctx.fill();
 
-    const getTargetUID = () => {
-      if (event.messageReply) return event.messageReply.senderID;
-      if (Object.keys(event.mentions).length > 0) return Object.keys(event.mentions)[0];
-      if (!isNaN(args[1])) return args[1];
-      return null;
-    };
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
+            ctx.lineWidth = 2;
+            for (let i = 0; i < 10; i++) {
+                ctx.beginPath();
+                ctx.moveTo(0, 100 + i * 30);
+                ctx.bezierCurveTo(200, 50 + i * 20, 500, 400 + i * 20, 800, 300);
+                ctx.stroke();
+            }
 
-    const getAmount = () => args[args.length - 1];
+            ctx.font = "bold 32px Arial";
+            ctx.fillStyle = "#ffffff";
+            ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
+            ctx.shadowBlur = 4;
+            ctx.fillText("GOAT BANK LTD.", 50, 60);
+            ctx.shadowBlur = 0;
 
-    const createHexagon = (ctx, x, y, size, color, stroke = false) => {
-      ctx.save();
-      ctx.beginPath();
-      for (let i = 0; i < 6; i++) {
-        const angle = (Math.PI / 3) * i;
-        const px = x + size * Math.cos(angle);
-        const py = y + size * Math.sin(angle);
-        if (i === 0) ctx.moveTo(px, py);
-        else ctx.lineTo(px, py);
-      }
-      ctx.closePath();
-      if (stroke) {
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 2;
-        ctx.stroke();
-      } else {
-        ctx.fillStyle = color;
-        ctx.fill();
-      }
-      ctx.restore();
-    };
+            try {
+                const avatarURL = `https://graph.facebook.com/${uid}/picture?width=512&height=512&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`;
+                const response = await axios.get(avatarURL, { responseType: 'arraybuffer' });
+                const avatarImg = await loadImage(Buffer.from(response.data));
 
-    if (args[0] === "help") {
-      const canvas = createCanvas(1000, 600);
-      const ctx = canvas.getContext("2d");
+                ctx.save();
+                ctx.shadowColor = '#00d2ff';
+                ctx.shadowBlur = 20;
+                ctx.beginPath();
+                ctx.arc(100, 150, 60, 0, Math.PI * 2);
+                ctx.closePath();
+                ctx.clip();
+                ctx.drawImage(avatarImg, 40, 90, 120, 120);
+                ctx.restore();
+                
+                ctx.strokeStyle = "#00d2ff";
+                ctx.lineWidth = 3;
+                ctx.stroke();
+            } catch (e) { console.log("Avatar error"); }
 
-      const gradient = ctx.createLinearGradient(0, 0, 1000, 600);
-      gradient.addColorStop(0, "#000814");
-      gradient.addColorStop(0.5, "#001d3d");
-      gradient.addColorStop(1, "#003566");
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, 1000, 600);
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "italic bold 40px sans-serif";
+            ctx.fillText("VISA", 650, 60);
 
-      for (let i = 0; i < 15; i++) {
-        createHexagon(ctx, Math.random() * 1000, Math.random() * 600, 20 + Math.random() * 30, "rgba(0, 255, 255, 0.03)", true);
-      }
+            ctx.font = "20px Arial";
+            ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
+            ctx.fillText("AVAILABLE BALANCE", 60, 260);
 
-      ctx.fillStyle = "#00ffff";
-      ctx.font = "bold 48px Montserrat, Arial";
-      ctx.fillText("💠 BANKING SYSTEM", 280, 100);
+            const displayBal = formatBalance(balance);
+            ctx.shadowColor = "#00d2ff";
+            ctx.shadowBlur = 15;
+            ctx.fillStyle = "#00d2ff";
+            ctx.font = displayBal.length > 10 ? "bold 60px Arial" : "bold 80px Arial";
+            ctx.fillText(`$${displayBal}`, 60, 330);
 
-      ctx.strokeStyle = "#00ffff";
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(280, 120);
-      ctx.lineTo(720, 120);
-      ctx.stroke();
+            ctx.shadowBlur = 0;
+            ctx.font = "28px monospace";
+            ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+            const formattedUID = uid.toString().padEnd(16, '0').match(/.{1,4}/g).join("  ");
+            ctx.fillText(formattedUID, 60, 385);
 
-      const commands = [
-        "🔹 {pn} → View your balance",
-        "🔹 {pn} @user → View other's balance",
-        "🔹 {pn} transfer UID amount → Send money",
-        "🔹 {pn} request amount → Request from admin",
-        "🔹 {pn} add UID amount → Admin add money",
-        "🔹 {pn} delete UID amount → Admin remove money"
-      ];
+            ctx.font = "bold 25px Arial";
+            ctx.fillStyle = "#ffffff";
+            ctx.fillText(name.toUpperCase(), 60, 420);
+            
+            ctx.font = "18px Arial";
+            ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+            ctx.fillText("VALID THRU: 12/29", 580, 420);
 
-      ctx.fillStyle = "#ffffff";
-      ctx.font = "26px Poppins, Arial";
-      for (let i = 0; i < commands.length; i++) {
-        ctx.fillText(commands[i], 150, 200 + (i * 55));
-      }
+            const cachePath = path.join(__dirname, "cache");
+            if (!fs.existsSync(cachePath)) fs.ensureDirSync(cachePath);
+            const cardPath = path.join(cachePath, `premium_card_${uid}.png`);
+            fs.writeFileSync(cardPath, canvas.toBuffer());
+            return cardPath;
+        };
 
-      ctx.fillStyle = "rgba(0, 255, 255, 0.2)";
-      ctx.font = "italic 20px Arial";
-      ctx.fillText("Quantum Banking v3.0 • Designed by Mahi", 300, 560);
+        const targetID = getTargetUID() || senderID;
+        const userData = await usersData.get(targetID);
+        if (!userData) return message.reply("User not found!");
 
-      const buffer = canvas.toBuffer("image/png");
-      const imagePath = path.join(__dirname, "tmp", `help_${Date.now()}.png`);
-      if (!fs.existsSync(path.join(__dirname, "tmp"))) fs.mkdirSync(path.join(__dirname, "tmp"));
-      fs.writeFileSync(imagePath, buffer);
+        if (!args[0] || (args[0] && !["transfer"].includes(args[0]))) {
+            const cardImg = await createUniqueCard(userData.name || "Global User", userData.money || 0, targetID);
+            
+            return message.reply({
+                body: `💳 GOAT BANK Premium Card: ${userData.name}\n💰 Balance: $${formatBalance(userData.money || 0)}`,
+                attachment: fs.createReadStream(cardImg)
+            }, () => { if(fs.existsSync(cardImg)) fs.unlinkSync(cardImg); });
+        }
 
-      message.reply({
-        attachment: fs.createReadStream(imagePath)
-      });
+        if (args[0] === "transfer") {
+            const targetUID = getTargetUID();
+            const amount = parseInt(args[args.length - 1]);
+            if (!targetUID || isNaN(amount) || amount <= 0) return message.reply("❌ Usage: balance transfer @tag 100");
 
-      setTimeout(() => {
-        try { fs.unlinkSync(imagePath); } catch (e) {}
-      }, 5000);
-      return;
+            const senderData = await usersData.get(senderID);
+            if (Number(senderData.money) < amount) return message.reply("❌ Insufficient balance!");
+
+            const receiverData = await usersData.get(targetUID);
+            await usersData.set(senderID, { money: (Number(senderData.money) - amount).toString() });
+            await usersData.set(targetUID, { money: (Number(receiverData.money || 0) + amount).toString() });
+
+            return message.reply(`✅ Transferred $${formatBalance(amount)} to ${receiverData.name}\nSystem Provider: ${nx_210}`);
+        }
     }
-
-    if (args[0] === "add") {
-      if (!allowedUIDs.includes(senderID)) return message.reply("❌ Permission denied.");
-      
-      const targetUID = getTargetUID();
-      const amount = getAmount();
-
-      if (!targetUID) return message.reply("❌ User not found.");
-      if (!isValidAmount(amount)) return message.reply("❌ Invalid amount.");
-
-      const userData = await usersData.get(targetUID) || { money: "0" };
-      const userName = userData.name || "Unknown";
-      const newBalance = (Number(userData.money) + Number(amount)).toString();
-
-      await usersData.set(targetUID, { ...userData, money: newBalance });
-
-      return message.reply(
-        `✅ Added ${formatMoney(amount)} to ${userName}.\n💳 New balance: ${formatMoney(newBalance)}`
-      );
-    }
-
-    if (args[0] === "delete" || args[0] === "subtract" || args[0] === "remove") {
-      if (!allowedUIDs.includes(senderID)) return message.reply("❌ Permission denied.");
-
-      const targetUID = getTargetUID();
-      const amount = getAmount();
-
-      if (!targetUID) return message.reply("❌ User not found.");
-      if (!isValidAmount(amount)) return message.reply("❌ Invalid amount.");
-
-      const userData = await usersData.get(targetUID) || { money: "0" };
-      const userName = userData.name || "Unknown";
-      const newBalance = Math.max(0, Number(userData.money) - Number(amount)).toString();
-
-      await usersData.set(targetUID, { ...userData, money: newBalance });
-
-      return message.reply(
-        `✅ Removed ${formatMoney(amount)} from ${userName}.\n💳 New balance: ${formatMoney(newBalance)}`
-      );
-    }
-
-    if (args[0] === "transfer" || args[0] === "send") {
-      const targetUID = getTargetUID();
-      const amount = getAmount();
-
-      if (!targetUID) return message.reply("❌ User not found.");
-      if (targetUID === senderID) return message.reply("❌ You can't transfer money to yourself.");
-      if (!isValidAmount(amount)) return message.reply("❌ Invalid amount.");
-
-      const senderData = await usersData.get(senderID) || { money: "0" };
-      if (Number(senderData.money) < Number(amount))
-        return message.reply(`❌ Not enough balance.\n💳 Your balance: ${formatMoney(senderData.money)}`);
-
-      const receiverData = await usersData.get(targetUID) || { money: "0" };
-      const receiverName = receiverData.name || "Unknown";
-
-      const newSenderBalance = (Number(senderData.money) - Number(amount)).toString();
-      const newReceiverBalance = (Number(receiverData.money) + Number(amount)).toString();
-
-      await usersData.set(senderID, { ...senderData, money: newSenderBalance });
-      await usersData.set(targetUID, { ...receiverData, money: newReceiverBalance });
-
-      return message.reply(
-        `✅ Transferred ${formatMoney(amount)} to ${receiverName}.\n💳 Your new balance: ${formatMoney(newSenderBalance)}`
-      );
-    }
-
-    if (args[0] === "request") {
-      const amount = args[1];
-
-      if (!isValidAmount(amount)) return message.reply("❌ Invalid amount.");
-
-      const senderName = (await usersData.get(senderID))?.name || "Someone";
-      const adminMentions = allowedUIDs.map(uid => `@${uid}`).join(" ");
-
-      return message.reply(
-        `📨 ${senderName} is requesting ${formatMoney(amount)} from an admin.\n${adminMentions}\n(Admins can approve with: {pn} add ${senderID} ${amount})`
-      );
-    }
-
-    // Default: view balance (own or mentioned/target user's)
-    const targetUID = getTargetUID() || senderID;
-    const userData = await usersData.get(targetUID) || { money: "0" };
-    const userName = userData.name || (await usersData.getName(targetUID).catch(() => "Unknown"));
-
-    return message.reply(
-      `💳 Balance of ${userName}: ${formatMoney(userData.money || 0)}`
-    );
-  }
 };

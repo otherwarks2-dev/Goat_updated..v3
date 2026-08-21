@@ -1,159 +1,70 @@
-const axios = require("axios");
-const fs = require("fs");
-const path = require("path");
+const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
 
-const AMV_API = "https://azadx69x-all-apis-top.vercel.app/api/amv";
-const DOWNLOAD_API = "https://azadx69x-ytb-api.vercel.app/download?url=";
+async function getStreamFromURL(url) {
+  const response = await axios.get(url, { responseType: 'stream' });
+  return response.data;
+}
 
-const threadUsedVideos = new Map();
+async function fetchTikTokVideos(query) {
+  try {
+    const response = await axios.get(`https://lyric-search-neon.vercel.app/kshitiz?keyword=${query}`);
+    return response.data;
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}
 
 module.exports = {
   config: {
     name: "anisearch",
-    aliases: ["amv"],
-    version: "0.0.7",
-    author: "Azadx69x",
-    role: 0,
-    category: "anime",
-    usePrefix: false,
-    shortDescription: "random anime",
-    longDescription: "Fetch and random anime"
+    aliases: [],
+    author: "Vex_kshitiz",
+    version: "1.0",
+    shortDescription: {
+      en: "get anime edit",
+    },
+    longDescription: {
+      en: "search for anime edits video",
+    },
+    category: "media",
+    guide: {
+      en: "{p}{n} [query]",
+    },
   },
+  onStart: async function ({ api, event, args }) {
+     api.setMessageReaction("✨", event.messageID, (err) => {}, true);
+    const query = args.join(' ');
+    const modifiedQuery = `${query} anime edit`;
 
-  onStart: async function({ message, args, api, event }) {
-    return this.run({ message, args, api, event });
-  },
+    const videos = await fetchTikTokVideos(modifiedQuery);
 
-  onChat: async function({ message, event, api }) {
-    const body = (event.body || "").toLowerCase().trim();
-    const prefixes = ["amv"];
-    
-    const hasPrefix = prefixes.some(p => body.startsWith(p));
-    if (!hasPrefix) return;
-
-    let args = [];
-    for (const prefix of prefixes) {
-      if (body.startsWith(prefix)) {
-        args = body.slice(prefix.length).trim().split(" ").filter(Boolean);
-        break;
-      }
+    if (!videos || videos.length === 0) {
+      api.sendMessage({ body: `${query} not found.` }, event.threadID, event.messageID);
+      return;
     }
-    
-    return this.run({ message, args, api, event });
-  },
 
-  run: async function({ message, args, api, event }) {
-    const threadID = event.threadID;
-    const messageID = event.messageID;
+    const selectedVideo = videos[Math.floor(Math.random() * videos.length)];
+    const videoUrl = selectedVideo.videoUrl;
+
+    if (!videoUrl) {
+      api.sendMessage({ body: 'Error: Video not found.' }, event.threadID, event.messageID);
+      return;
+    }
 
     try {
-      const searchQuery = args.join(" ").trim() || "anime amv short";
-      
-      api.setMessageReaction("🎌", messageID, threadID, () => {}, true);
-      
-      if (!threadUsedVideos.has(threadID)) {
-        threadUsedVideos.set(threadID, new Set());
-      }
-      const usedVideos = threadUsedVideos.get(threadID);
-      
-      let videoData = null;
-      let attempts = 0;
-      const maxAttempts = 5;
+      const videoStream = await getStreamFromURL(videoUrl);
 
-      while (attempts < maxAttempts) {
-        const apiUrl = `${AMV_API}?search=${encodeURIComponent(searchQuery)}`;
-        const { data } = await axios.get(apiUrl, { timeout: 15000 });
-
-        if (!data?.success || !data.videoId) {
-          break;
-        }
-
-        if (!usedVideos.has(data.videoId)) {
-          videoData = data;
-          usedVideos.add(data.videoId);
-          break;
-        }
-
-        attempts++;
-        await new Promise(r => setTimeout(r, 500));
-      }
-
-      if (!videoData) {
-        api.setMessageReaction("❌", messageID, threadID, () => {}, true);
-        return message.reply("❌ No video found! Try again.");
-      }
-      
-      if (usedVideos.size > 30) {
-        const iterator = usedVideos.values();
-        usedVideos.delete(iterator.next().value);
-      }
-      
-      const youtubeUrl = videoData.youtube;
-      const fileName = `amv_${videoData.videoId}_${Date.now()}.mp4`;
-      const filePath = path.join(__dirname, fileName);
-
-      try {
-        const downloadResp = await axios({
-          method: "GET",
-          url: `${DOWNLOAD_API}${encodeURIComponent(youtubeUrl)}`,
-          responseType: "stream",
-          timeout: 60000
-        });
-        
-        const writer = fs.createWriteStream(filePath);
-        downloadResp.data.pipe(writer);
-
-        await new Promise((resolve, reject) => {
-          writer.on("finish", resolve);
-          writer.on("error", reject);
-        });
-        
-        const stats = fs.statSync(filePath);
-        if (stats.size < 500 * 1024) {
-          throw new Error("File too small");
-        }
-        
-        await api.sendMessage(
-          {
-            attachment: fs.createReadStream(filePath)
-          },
-          threadID,
-          () => {
-            safeDelete(filePath);
-          },
-          messageID
-        );
-        
-        api.setMessageReaction("✔️", messageID, threadID, () => {}, true);
-
-      } catch (downloadErr) {
-        console.error("Download failed:", downloadErr);
-        
-        await api.sendMessage(
-          youtubeUrl,
-          threadID,
-          null,
-          messageID
-        );
-        
-        safeDelete(filePath);
-        api.setMessageReaction("⚠️", messageID, threadID, () => {}, true);
-      }
-
-    } catch (err) {
-      console.error("[anisearch] Error:", err);
-      api.setMessageReaction("❌", messageID, threadID, () => {}, true);
-      message.reply("❌ Failed to fetch Anime. API error.");
+      await api.sendMessage({
+        body: ``,
+        attachment: videoStream,
+      }, event.threadID, event.messageID);
+    } catch (error) {
+      console.error(error);
+      api.sendMessage({ body: 'An error occurred while processing the video.\nPlease try again later.' }, event.threadID, event.messageID);
     }
-  }
+  },
 };
-
-function safeDelete(filePath) {
-  try {
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
-    }
-  } catch (e) {
-    console.log("Delete error:", e.message);
-  }
-}

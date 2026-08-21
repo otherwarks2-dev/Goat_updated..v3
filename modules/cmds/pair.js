@@ -433,4 +433,4 @@ function truncateText(text, maxLength) {
 function bezierPoint(p0, p1, p2, p3, t) {
     const c = 1 - t;
     return c*c*c*p0 + 3*c*c*t*p1 + 3*c*t*t*p2 + t*t*t*p3;
-}
+    }

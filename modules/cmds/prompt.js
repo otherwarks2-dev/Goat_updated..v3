@@ -1,48 +1,64 @@
 const axios = require("axios");
 
-const baseApi = "https://azadx69x-all-apis-top.vercel.app/api/prompt";
+const configUrl = "https://raw.githubusercontent.com/aryannix/stuffs/master/raw/apis.json";
 
 module.exports = {
   config: {
     name: "prompt",
     aliases: ["p"],
-    version: "0.0.5",
+    version: "0.0.1",
     role: 0,
-    author: "Azadx69x",
-    category: "ai",
-    cooldowns: 3,
-    guide: { en: "Reply to an image to generate an AI prompt" }
+    author: "ArYAN",
+    category: "AI",
+    cooldowns: 5,
+    guide: { en: "Reply to an image to generate Midjourney prompt" }
   },
 
   onStart: async ({ api, event }) => {
     const { threadID, messageID, messageReply } = event;
-    
+
+    let baseApi;
+    try {
+      const configRes = await axios.get(configUrl);
+      baseApi = configRes.data && configRes.data.api;
+      if (!baseApi) throw new Error("Configuration Error: Missing API in GitHub JSON.");
+    } catch (error) {
+      return api.sendMessage("❌ Failed to fetch API configuration from GitHub.", threadID, messageID);
+    }
+
     if (
       !messageReply ||
       !messageReply.attachments ||
       messageReply.attachments.length === 0 ||
       !messageReply.attachments[0].url
     ) {
-      return api.sendMessage("⚠️ Please reply to an image to generate a prompt.", threadID, messageID);
+      return api.sendMessage("Please reply to an image.", threadID, messageID);
     }
 
     try {
-      api.setMessageReaction("⏳", messageID, () => {}, true);
+      api.setMessageReaction("⏰", messageID, () => {}, true);
 
       const imageUrl = messageReply.attachments[0].url;
-      const apiUrl = `${baseApi}?url=${encodeURIComponent(imageUrl)}`;
-      
-      const response = await axios.get(apiUrl);
-      const json = response.data;
-      
-      if (!json || !json.data || !json.data.prompt) {
-        throw new Error("❌ No prompt found.");
+      const apiUrl = `${baseApi}/promptv2`;
+
+      const apiResponse = await axios.get(apiUrl, {
+        params: { imageUrl }
+      });
+
+      const result = apiResponse.data;
+
+      if (!result.success) {
+        throw new Error(result.message || "Prompt API failed.");
       }
 
-      const promptText = json.data.prompt;
-      
-      await api.sendMessage({ body: `🐦 Generated Prompt:\n\n${promptText}` }, threadID, messageID);
-      
+      const promptText = result.prompt || "No prompt returned.";
+
+      await api.sendMessage(
+        { body: `${promptText}` },
+        threadID,
+        messageID
+      );
+
       api.setMessageReaction("✅", messageID, () => {}, true);
     } catch (e) {
       api.setMessageReaction("❌", messageID, () => {}, true);

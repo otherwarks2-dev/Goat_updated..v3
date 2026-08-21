@@ -1,75 +1,78 @@
+const fs = require("fs");
+const path = require("path");
 const axios = require("axios");
+const FormData = require("form-data");
 
 module.exports = {
   config: {
     name: "catbox",
-    aliases: ["cb"],
-    version: "1.0.4",
+    version: "1.0.1",
+    author: "MOHAMMAD AKASH",
     role: 0,
-    author: "Azadx69x",
-    countDown: 0,
-    category: "catbox",
-    guide: {
-      en: "[reply with media or send a URL]"
-    }
+    shortDescription: "Upload media to Catbox",
+    longDescription: "Reply to an image, video, or audio file to upload it to Catbox and get the link.",
+    category: "media",
+    guide: "[reply to image/video/audio]",
+    cooldowns: 5
   },
 
-  onStart: async function ({ api, event, args }) {
-    await this.uploadMedia(api, event, args);
-  },
+  onStart: async function ({ api, event }) {
+    const { threadID, type, messageReply, messageID } = event;
 
-  uploadMedia: async function (api, event, args) {
-    let mediaUrl;
-    
-    const urlArg = args.join(" ");
-    if (urlArg && /^https?:\/\//i.test(urlArg)) {
-      mediaUrl = urlArg;
-    }
-    else if (
-      event.type === "message_reply" &&
-      event.messageReply &&
-      event.messageReply.attachments &&
-      event.messageReply.attachments.length > 0
-    ) {
-      mediaUrl = event.messageReply.attachments[0].url;
-    }
-    else if (event.attachments && event.attachments.length > 0) {
-      mediaUrl = event.attachments[0].url;
-    }
-    else {
-      return api.sendMessage(
-        "❌ No media detected. Please reply to media, attach one, or send a valid URL.",
-        event.threadID,
-        event.messageID
-      );
+    if (type !== "message_reply" || !messageReply.attachments || messageReply.attachments.length === 0) {
+      return api.sendMessage("❐ Please reply to a photo/video/audio file.", threadID, messageID);
     }
 
-    try {
-      const endpoint = `https://azadx69x-all-apis-top.vercel.app/api/catbox?url=${encodeURIComponent(mediaUrl)}`;
-      const res = await axios.get(endpoint, { timeout: 20000 });
-      const data = res.data;
+    const attachmentPaths = [];
 
-      if (!data || !data.url) {
-        return api.sendMessage(
-          "❌ Upload failed or invalid response from API.",
-          event.threadID,
-          event.messageID
-        );
+    // Download attachments
+    async function downloadAttachment(url, filename) {
+      const writer = fs.createWriteStream(filename);
+      const response = await axios({
+        url,
+        method: "GET",
+        responseType: "stream"
+      });
+      response.data.pipe(writer);
+      return new Promise((resolve, reject) => {
+        writer.on("finish", resolve);
+        writer.on("error", reject);
+      });
+    }
+
+    let index = 0;
+    for (const data of messageReply.attachments) {
+      const ext = data.type === "photo" ? "jpg" :
+                  data.type === "video" ? "mp4" :
+                  data.type === "audio" ? "mp3" :
+                  data.type === "animated_image" ? "gif" : "dat";
+      const filePath = path.join(__dirname, `cache_${Date.now()}_${index}.${ext}`);
+      await downloadAttachment(data.url, filePath);
+      attachmentPaths.push(filePath);
+      index++;
+    }
+
+    let msg = "";
+
+    for (const filePath of attachmentPaths) {
+      try {
+        const form = new FormData();
+        form.append("reqtype", "fileupload");
+        form.append("fileToUpload", fs.createReadStream(filePath));
+
+        const response = await axios.post("https://catbox.moe/user/api.php", form, {
+          headers: form.getHeaders(),
+        });
+
+        msg += `${response.data.trim()}\n`;
+      } catch (err) {
+        console.error("Catbox upload failed:", err);
+        msg += "❌ Upload failed for one file.\n";
+      } finally {
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
       }
-
-      const reply = [
-        "✅ Upload Successful",
-        `🔗 URL: ${data.url}`
-      ].join("\n");
-
-      return api.sendMessage(reply, event.threadID, event.messageID);
-    } catch (err) {
-      console.error("Catbox API error:", err);
-      return api.sendMessage(
-        "❌ Error uploading media. Try again later.",
-        event.threadID,
-        event.messageID
-      );
     }
+
+    return api.sendMessage(msg.trim(), threadID, messageID);
   }
 };

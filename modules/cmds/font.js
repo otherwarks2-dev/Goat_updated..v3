@@ -1,157 +1,94 @@
-const axios = require("axios");
-
-let fontPages = {};
-
-const fontPreviews = {
-  1: "Ă̈z̆̈ă̈d̆̈",
-  2: "A̷z̷a̷d̷",
-  3: "𝗔𝗭𝗔𝗗",
-  4: "𝘈𝘡𝘈𝘋",
-  5: "[A][Z][A][D]",
-  6: "𝕬𝖟𝖆𝖉",
-  7: "ＡＺＡＤ",
-  8: "ᴬᶻᴬᴰ",
-  9: "∀zɐᗡ",
-  10: "🄰🅉🄰🄳",
-  11: "🅰🆉🅰🅳",
-  12: "𝒜𝓏𝒶𝒹",
-  13: "𝓐𝔃𝓪𝓭",
-  14: "𝔄𝔷𝔞𝔡",
-  15: "𝔸𝕫𝕒𝕕",
-  16: "A̸z̸a̸d̸",
-  17: "A̽z̽a̽d̽",
-  18: "A⃠z⃠a⃠d⃠",
-  19: "A҉z҉a҉d҉",
-  20: "A̶z̶a̶d̶",
-  21: "Ȃz̑ȃd̑",
-  22: "A̾z̾a̾d̾",
-  23: "A͡z͡a͡d͡",
-  24: "A⃗z⃗a⃗d⃗",
-  25: "A⃘z⃘a⃘d⃘",
-  26: "Ăz̆ăd̆",
-  27: "A̲z̲a̲d̲",
-  28: "A̅z̅a̅d̅",
-  29: "A͇z͇a͇d͇",
-  30: "A̺z̺a̺d̺",
-  31: "A̬z̬a̬d̬",
-  32: "A⃔z⃔a⃔d⃔",
-  33: "A⃕z⃕a⃕d⃕",
-  34: "Ảz̉ảd̉",
-  35: "A͆z͆a͆d͆",
-  36: "A̽z̽a̽d̽",
-  37: "A̫z̫a̫d̫",
-  38: "A⃒z⃒a⃒d⃒",
-  39: "A͓̽z͓̽a͓̽d͓̽",
-  40: "A⃘z⃘a⃘d⃘",
-  41: "A⃖z⃖a⃖d⃖",
-  42: "A⃗z⃗a⃗d⃗",
-  43: "A⃒z⃒a⃒d⃒",
-  44: "A⃩z⃩a⃩d⃩",
-  45: "A⃗z⃗a⃗d⃗",
-  46: "A⃒z⃒a⃒d⃒",
-  47: "A̤z̤a̤d̤",
-  48: "A̰z̰a̰d̰",
-  49: "A̾z̾a̾d̾",
-  50: "A⃜z⃜a⃜d⃜"
-};
-
 module.exports = {
   config: {
     name: "font",
-    aliases: ["fonts"],
-    version: "2.3.0",
+    version: "6.3.0",
+    author: "〲MAMUNツ࿐",
     role: 0,
-    shortDescription: "Convert text to stylish fonts using API",
-    longDescription: "Generate stylish fonts from text using 50 different styles via API",
     category: "utility",
-    guide: {
-      en: "{pn} list - show all font styles\n{pn} <style number> <text> - convert text to font\nExample: {pn} 12 HelloWorld"
-    }
+    description: "Clean font system"
   },
 
-  onStart: async function({ api, event, args }) {
-    try {
-      const threadID = event.threadID;
-      const messageID = event.messageID;
+  onStart: async function ({ api, event, args }) {
 
-      if (!args.length) {
-        return api.sendMessage({
-          body: `🎨 𝗙𝗢𝗡𝗧 𝗚𝗘𝗡𝗘𝗥𝗔𝗧𝗢𝗥 🎨\n━━━━━━━━━━━━━━━━\n\n📖 Usage:\n• font list - Show all 50 styles\n• font <number> <text> - Convert text\n\n📌 Example:\nfont list\nfont 12 HelloWorld`
-        }, threadID, messageID);
-      }
+    const type = (args[0] || "").toLowerCase();
+    const text = args.slice(1).join(" ");
 
-      const arg0 = args[0].toLowerCase();
+    const normal = "abcdefghijklmnopqrstuvwxyz";
 
-      if (arg0 === "list") {
-        fontPages[threadID] = 1;
-        return showFontList(threadID, fontPages[threadID], api, messageID);
-      }
+    const fonts = {
+      1: ["𝗮","𝗯","𝗰","𝗱","𝗲","𝗳","𝗴","𝗵","𝗶","𝗷","𝗸","𝗹","𝗺","𝗻","𝗼","𝗽","𝗾","𝗿","𝘀","𝘁","𝘂","𝘃","𝘄","𝘅","𝘆","𝘇"],
+      2: ["𝙖","𝙗","𝙘","𝙙","𝙚","𝙛","𝙜","𝙝","𝙞","𝙟","𝙠","𝙡","𝙢","𝙣","𝙤","𝙥","𝙦","𝙧","𝙨","𝙩","𝙪","𝙫","𝙬","𝙭","𝙮","𝙯"],
+      3: ["𝒶","𝒷","𝒸","𝒹","𝑒","𝒻","𝑔","𝒽","𝒾","𝒿","𝓀","𝓁","𝓂","𝓃","𝑜","𝓅","𝓆","𝓇","𝓈","𝓉","𝓊","𝓋","𝓌","𝓍","𝓎","𝓏"],
+      4: ["𝖺","𝖻","𝖼","𝖽","𝖾","𝖿","𝗀","𝗁","𝗂","𝗃","𝗄","𝗅","𝗆","𝗇","𝗈","𝗉","𝗊","𝗋","𝗌","𝗍","𝗎","𝗏","𝗐","𝗑","𝗒","𝗓"],
+      5: ["ᴀ","ʙ","ᴄ","ᴅ","ᴇ","ғ","ɢ","ʜ","ɪ","ᴊ","ᴋ","ʟ","ᴍ","ɴ","ᴏ","ᴘ","ǫ","ʀ","s","ᴛ","ᴜ","ᴠ","ᴡ","x","ʏ","ᴢ"],
+      6: ["𝑎","𝑏","𝑐","𝑑","𝑒","𝑓","𝑔","ℎ","𝑖","𝑗","𝑘","𝑙","𝑚","𝑛","𝑜","𝑝","𝑞","𝑟","𝑠","𝑡","𝑢","𝑣","𝑤","𝑥","𝑦","𝑧"],
+      7: ["𝗔","𝗕","𝗖","𝗗","𝗘","𝗙","𝗚","𝗛","𝗜","𝗝","𝗞","𝗟","𝗠","𝗡","𝗢","𝗣","𝗤","𝗥","𝗦","𝗧","𝗨","𝗩","𝗪","𝗫","𝗬","𝗭"],
+      8: ["𝓪","𝓫","𝓬","𝓭","𝓮","𝓯","𝓰","𝓱","𝓲","𝓳","𝓴","𝓵","𝓶","𝓷","𝓸","𝓹","𝓺","𝓻","𝓼","𝓽","𝓾","𝓿","𝔀","𝔁","𝔂","𝔃"],
+      9: ["𝕒","𝕓","𝕔","𝕕","𝕖","𝕗","𝕘","𝕙","𝕚","𝕛","𝕜","𝕝","𝕞","𝕟","𝕠","𝕡","𝕢","𝕣","𝕤","𝕥","𝕦","𝕧","𝕨","𝕩","𝕪","𝕫"],
+      10:["ᗩ","ᗷ","ᑕ","ᗪ","E","ᖴ","G","ᕼ","I","ᒍ","K","ᒪ","ᗰ","ᑎ","O","ᑭ","ᑫ","ᖇ","ᔕ","T","ᑌ","ᐯ","ᗯ","᙭","Y","ᘔ"],
+      11:["卂","乃","匚","ᗪ","乇","千","Ꮆ","卄","丨","ﾌ","Ҝ","ㄥ","爪","几","ㄖ","卩","Ɋ","尺","丂","ㄒ","ㄩ","ᐯ","山","乂","ㄚ","乙"],
+      12:["𝔞","𝔟","𝔠","𝔡","𝔢","𝔣","𝔤","𝔥","𝔦","𝔧","𝔨","𝔩","𝔪","𝔫","𝔬","𝔭","𝔮","𝔯","𝔰","𝔱","𝔲","𝔳","𝔴","𝔵","𝔶","𝔷"],
+      13:["α","β","c","d","ε","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z"],
+      14:["ａ","ｂ","ｃ","ｄ","ｅ","ｆ","ｇ","ｈ","ｉ","ｊ","ｋ","ｌ","ｍ","ｎ","ｏ","ｐ","ｑ","ｒ","ｓ","ｔ","ｕ","ｖ","ｗ","ｘ","ｙ","ｚ"],
+      15:["ᵃ","ᵇ","ᶜ","ᵈ","ᵉ","ᶠ","ᵍ","ʰ","ⁱ","ʲ","ᵏ","ˡ","ᵐ","ⁿ","ᵒ","ᵖ","ᑫ","ʳ","ˢ","ᵗ","ᵘ","ᵛ","ʷ","ˣ","ʸ","ᶻ"],
+      16:["𝖺","𝖻","𝖼","𝖽","𝖾","𝖿","𝗀","𝗁","𝗂","𝗃","𝗄","𝗅","𝗆","𝗇","𝗈","𝗉","𝗊","𝗋","𝗌","𝗍","𝗎","𝗏","𝗐","𝗑","𝗒","𝗓"],
+      17:["𝘢","𝘣","𝘤","𝘥","𝘦","𝘧","𝘨","𝘩","𝘪","𝘫","𝘬","𝘭","𝘮","𝘯","𝘰","𝘱","𝘲","𝘳","𝘴","𝘵","𝘶","𝘷","𝘸","𝘹","𝘺","𝘻"],
+      18:["𝙖","𝙗","𝙘","𝙙","𝙚","𝙛","𝙜","𝙝","𝙞","𝙟","𝙠","𝙡","𝙢","𝙣","𝙤","𝙥","𝙦","𝙧","𝙨","𝙩","𝙪","𝙫","𝙬","𝙭","𝙮","𝙯"],
+      19:["𝔸","𝔹","ℂ","𝔻","𝔼","𝔽","𝔾","ℍ","𝕀","𝕁","𝕂","𝕃","𝕄","ℕ","𝕆","ℙ","ℚ","ℝ","𝕊","𝕋","𝕌","𝕍","𝕎","𝕏","𝕐","ℤ"],
+      20:["𝔞","𝔟","𝔠","𝔡","𝔢","𝔣","𝔤","𝔥","𝔦","𝔧","𝔨","𝔩","𝔪","𝔫","𝔬","𝔭","𝔮","𝔯","𝔰","𝔱","𝔲","𝔳","𝔴","𝔵","𝔶","𝔷"]
+    };
 
-      if ((arg0 === "next" || arg0 === "prev" || arg0 === "page") && fontPages[threadID]) {
-        let page = fontPages[threadID];
-        if (arg0 === "next") page++;
-        else if (arg0 === "prev") page = Math.max(page - 1, 1);
-        else if (arg0 === "page" && args[1]) {
-          const requestedPage = parseInt(args[1]);
-          if (!isNaN(requestedPage) && requestedPage > 0) page = requestedPage;
-        }
-        fontPages[threadID] = page;
-        return showFontList(threadID, page, api, messageID);
-      }
+    const preview = (arr) =>
+      "Mamun".split("").map(c => {
+        const i = normal.indexOf(c.toLowerCase());
+        return i !== -1 ? arr[i] : c;
+      }).join("");
 
-      const styleNum = parseInt(arg0);
-      if (!isNaN(styleNum)) {
-        const text = args.slice(1).join(" ");
-        if (!text) return api.sendMessage(`❌ Please provide text to convert.\nUsage: font ${styleNum} <text>`, threadID, messageID);
+    // LIST COMMAND (WITH PREVIEW)
+    if (type === "list") {
+      return api.sendMessage(
+`✨ FONT LIST ✨
 
-        try {
-          const url = `https://azadx69x-all-apis-top.vercel.app/api/fontstyle`;
-          const res = await axios.get(url, { params: { text, style: styleNum }, timeout: 10000 });
+1 = Bold        → ${preview(fonts[1])}
+2 = Mono        → ${preview(fonts[2])}
+3 = Script      → ${preview(fonts[3])}
+4 = Double      → ${preview(fonts[4])}
+5 = Small Caps  → ${preview(fonts[5])}
+6 = Italic      → ${preview(fonts[6])}
+7 = Bold Upper  → ${preview(fonts[7])}
+8 = Curly       → ${preview(fonts[8])}
+9 = Bubble      → ${preview(fonts[9])}
+10 = Block      → ${preview(fonts[10])}
+11 = Chinese    → ${preview(fonts[11])}
+12 = Fraktur    → ${preview(fonts[12])}
+13 = Greek Mix  → ${preview(fonts[13])}
+14 = Full Width → ${preview(fonts[14])}
+15 = Super      → ${preview(fonts[15])}
+16 = Serif      → ${preview(fonts[16])}
+17 = Smooth     → ${preview(fonts[17])}
+18 = Tech       → ${preview(fonts[18])}
+19 = Double Bold→ ${preview(fonts[19])}
+20 = Old Frak   → ${preview(fonts[20])}
 
-          if (res.data.success && res.data.output) {
-            return api.sendMessage({
-              body: `✨ 𝗙𝗢𝗡𝗧 𝗦𝗧𝗬𝗟𝗘 ${styleNum} ✨\n━━━━━━━━━━━━━━━━\n${res.data.output}`
-            }, threadID, messageID);
-          }
-        } catch (err) {
-          console.error("API Error:", err.message);
-        }
-        
-        const output = convertTextLocally(styleNum, text);
-        return api.sendMessage({
-          body: `✨ 𝗙𝗢𝗡𝗧 𝗦𝗧𝗬𝗟𝗘 ${styleNum} (Local Fallback) ✨\n━━━━━━━━━━━━━━━━\n${output}\n⚠️ Note: API unavailable`
-        }, threadID, messageID);
-      }
-
-      return api.sendMessage(`❌ Invalid command format!\nUsage:\n• font list - Show all 50 styles\n• font <1-50> <text>\nExample: font 12 HelloWorld`, threadID, messageID);
-
-    } catch (error) {
-      console.error("Font command error:", error);
-      return api.sendMessage("❌ An error occurred while processing the font command.", event.threadID, event.messageID);
+Use: font 1 Mamun`,
+        event.threadID
+      );
     }
+
+    if (!type || !text) {
+      return api.sendMessage("Use: font list OR font 1 Mamun", event.threadID);
+    }
+
+    const selected = fonts[type];
+    if (!selected) {
+      return api.sendMessage("Invalid font type! Use: font list", event.threadID);
+    }
+
+    const result = text.toLowerCase().split("").map(c => {
+      const i = normal.indexOf(c);
+      return i !== -1 ? selected[i] : c;
+    }).join("");
+
+    return api.sendMessage(result, event.threadID);
   }
 };
-
-function showFontList(threadID, page, api, messageID) {
-  const perPage = 15;
-  const totalPages = Math.ceil(50 / perPage);
-  const startIndex = (page - 1) * perPage;
-  const endIndex = Math.min(startIndex + perPage, 50);
-
-  let message = `🎨 𝗙𝗢𝗡𝗧 𝗦𝗧𝗬𝗟𝗘𝗦 🎨\n📄 Page: ${page}/${totalPages}\n━━━━━━━━━━━━━━━━\n`;
-  for (let i = startIndex; i < endIndex; i++) message += `${i + 1}.➤ ${fontPreviews[i + 1]}\n`;
-
-  message += `\n📖 Usage: font <number> <text>\n📌 Example: font 12 HelloWorld\n⏭️ Navigation: Reply "next" or "prev"`;
-
-  return api.sendMessage({ body: message }, threadID, messageID);
-}
-
-function convertTextLocally(styleNum, text) {
-  const base = "Azad";
-  const preview = fontPreviews[styleNum] || base;
-
-  const map = {};
-  for (let i = 0; i < base.length; i++) map[base[i]] = preview[i] || base[i];
-
-  return text.split('').map(c => map[c] || c).join('');
-}

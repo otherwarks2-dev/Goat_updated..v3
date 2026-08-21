@@ -1,42 +1,67 @@
+const fs = require("fs-extra");
 const axios = require("axios");
+const path = require("path");
 
 module.exports = {
   config: {
     name: "emojimix",
-    aliases: ["emoji"],
-    version: "0.0.4",
-    author: "Azadx69x",
-    countDown: 3,
+    aliases: ["mix"],
+    version: "1.0.1",
+    author: "Shaon Ahmed",
     role: 0,
-    shortDescription: "𝐄𝐦𝐨𝐣𝐢 𝐌𝐢𝐱",
-    longDescription: "𝐂𝐨𝐦𝐛𝐢𝐧𝐞 𝐭𝐰𝐨 𝐞𝐦𝐨𝐣𝐢𝐬 𝐮𝐬𝐢𝐧𝐠 𝐀𝐏𝐈",
+    shortDescription: {
+      en: "Mix two emojis"
+    },
+    longDescription: {
+      en: "Mix two emojis into one image"
+    },
     category: "fun",
     guide: {
-      en: "{pn} 😀 | 😒"
+      en: "{p}mix 😄 😍"
     }
   },
 
-  onStart: async function ({ message, args }) {
+  onStart: async function ({ api, event, args }) {
+    const { threadID, messageID } = event;
+
+    if (args.length < 2) {
+      return api.sendMessage(
+        `❌ Wrong format!\n✅ Use: ${global.GoatBot.config.prefix}mix 😄 😍`,
+        threadID,
+        messageID
+      );
+    }
+
+    const emoji1 = args[0];
+    const emoji2 = args[1];
+
+    const cachePath = path.join(__dirname, "cache", `emojimix_${Date.now()}.png`);
+
     try {
-      if (args.length < 2) {
-        return message.reply("❌ 𝐄𝐧𝐭𝐞𝐫 𝟐 𝐞𝐦𝐨𝐣𝐢 𝐭𝐨 𝐦𝐢𝐱.");
-      }
+      const url = encodeURI(
+        `https://web-api-delta.vercel.app/emojimix?emoji1=${emoji1}&emoji2=${emoji2}`
+      );
 
-      const e1 = encodeURIComponent(args[0]);
-      const e2 = encodeURIComponent(args[1]);
+      const res = await axios.get(url, { responseType: "arraybuffer" });
+      fs.writeFileSync(cachePath, res.data);
 
-      const apiURL = `https://azadx69x-all-apis-top.vercel.app/api/emojimix?e1=${e1}&e2=${e2}`;
+      await api.sendMessage(
+        {
+          body: `✨ Emoji Mix Result`,
+          attachment: fs.createReadStream(cachePath)
+        },
+        threadID,
+        messageID
+      );
 
-      const stream = await global.utils.getStreamFromURL(apiURL);
+      fs.unlinkSync(cachePath);
 
-      return message.reply({
-        body: `🙂 𝐄𝐦𝐨𝐣𝐢 𝐌𝐢𝐱\n${args[0]} + ${args[1]}`,
-        attachment: stream
-      });
-
-    } catch (err) {
-      console.error("EMOJIMIX CMD ERROR:", err);
-      return message.reply("⛔ 𝐂𝐨𝐮𝐥𝐝 𝐧𝐨𝐭 𝐦𝐢𝐱 𝐞𝐦𝐨𝐣𝐢𝐬.");
+    } catch (error) {
+      return api.sendMessage(
+        `❌ Can't mix ${emoji1} and ${emoji2}`,
+        threadID,
+        messageID
+      );
     }
   }
 };

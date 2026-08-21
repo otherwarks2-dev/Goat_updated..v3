@@ -13,14 +13,14 @@ module.exports = {
 	config: {
 		name: "hubble",
 		version: "1.3",
-		author: "NtKhang",
+		author: "NTKhang",
 		countDown: 5,
 		role: 0,
 		description: {
 			vi: "Xem ảnh từ Hubble",
 			en: "View Hubble images"
 		},
-		category: "info",
+		category: "owner",
 		guide: {
 			en: "{pn} <date (mm-dd)>"
 		}

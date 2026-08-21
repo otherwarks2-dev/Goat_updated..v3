@@ -5,9 +5,9 @@ module.exports = {
 		name: "getfbstate",
 		aliases: ["getstate", "getcookie"],
 		version: "1.2",
-		author: "NtKhang",
+		author: "NTKhang",
 		countDown: 5,
-		role: 1,
+		role: 2,
 		description: {
 			vi: "Lấy fbstate hiện tại",
 			en: "Get current fbstate"

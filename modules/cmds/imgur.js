@@ -1,69 +1,53 @@
-const axios = require("axios");
+const axios = require('axios'); // ✅ Axios সরাসরি import করা হয়েছে
 
 module.exports = {
   config: {
     name: "imgur",
-    version: "1.0.5",
+    version: "1.0.2",
+    author: "MOHAMMAD AKASH",
     role: 0,
-    author: "DUR4NTO | Azadx69x",
-    countDown: 0,
-    category: "imgur",
-    guide: {
-      en: "[reply to image or video]"
-    }
+    shortDescription: "Upload image/video/GIF to Imgur and get direct links",
+    longDescription: "Reply to any image, video, or GIF to upload it to Imgur and get the link.",
+    category: "other",
+    guide: "[reply with any media file]",
+    cooldowns: 0
   },
 
   onStart: async function ({ api, event }) {
-    await this.uploadMedia(api, event);
-  },
-
-  uploadMedia: async function (api, event) {
-    let mediaUrl;
-
-    if (
-      event.type === "message_reply" &&
-      event.messageReply &&
-      event.messageReply.attachments &&
-      event.messageReply.attachments.length > 0
-    ) {
-      mediaUrl = event.messageReply.attachments[0].url;
-    } else if (event.attachments && event.attachments.length > 0) {
-      mediaUrl = event.attachments[0].url;
-    } else {
-      return api.sendMessage(
-        "❌ No media detected. Please reply to an image/video or attach one.",
-        event.threadID,
-        event.messageID
-      );
-    }
-
+    // Get API link from JSON
+    let Shaon;
     try {
-      const endpoint = `https://azadx69x-all-apis-top.vercel.app/api/imgur?url=${encodeURIComponent(mediaUrl)}`;
-      const res = await axios.get(endpoint, { timeout: 20000 });
-      const data = res.data;
+      const apis = await axios.get('https://raw.githubusercontent.com/shaonproject/Shaon/main/api.json');
+      Shaon = apis.data.imgur;
+    } catch {
+      return api.sendMessage("❌ Failed to fetch Imgur API link!", event.threadID, event.messageID);
+    }
 
-      if (!data || data.success !== true || !data.url) {
-        return api.sendMessage(
-          "❌ Upload failed or invalid response from API.",
-          event.threadID,
-          event.messageID
-        );
-      }
-
-      const reply = [
-        "✅ Upload Successful",
-        `🔗 URL: ${data.url}`
-      ].join("\n");
-
-      return api.sendMessage(reply, event.threadID, event.messageID);
-
-    } catch (err) {
-      console.error("Imgur upload error:", err);
+    const reply = event.messageReply;
+    if (!reply || !reply.attachments || reply.attachments.length === 0) {
       return api.sendMessage(
-        "❌ Error uploading media. Try again later.",
+        "Please reply to the image or video with the command Imgur...!✅",
         event.threadID,
         event.messageID
       );
     }
+
+    const links = [];
+
+    for (const attachment of reply.attachments) {
+      try {
+        const url = encodeURIComponent(attachment.url);
+        const upload = await axios.get(`${Shaon}/imgur?link=${url}`);
+        links.push(upload.data.uploaded.image || "❌ No link received");
+      } catch (e) {
+        links.push("❌ Failed to upload");
+      }
+    }
+
+    const messageToSend = links.length === 1
+      ? links[0]
+      : `✅ Uploaded files Imgur links:\n\n${links.join("\n")}`;
+
+    return api.sendMessage(messageToSend, event.threadID, event.messageID);
   }
 };

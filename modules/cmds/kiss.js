@@ -1,61 +1,77 @@
-const DIG = require("discord-image-generation");
-const axios = require('axios');
+const axios = require("axios");
 const fs = require("fs");
-const os = require("os");
 const path = require("path");
+
+const mahmud = async () => {
+  const base = await axios.get(
+    "https://raw.githubusercontent.com/mahmudx7/HINATA/main/baseApiUrl.json"
+  );
+  return base.data.mahmud;
+};
+
+/**
+ * @author MahMUD
+ * @author: do not delete it
+ */
 
 module.exports = {
   config: {
     name: "kiss",
-    aliases: ["kiss"],
-    version: "0.0.1",
-    author: "ArYAN",
+    version: "1.7",
+    author: "MahMUD",
     countDown: 5,
     role: 0,
-    shortDescription: "kiss someone",
-    longDescription: "Kisses a mentioned user by generating an image.",
-    category: "fun",
-    guide: "{pn} [@mention]"
+    longDescription: "Generate anime-style kiss image",
+    category: "love",
+    guide: "{pn} @mention"
   },
-  onStart: async function ({ message, event }) {
-    const mention = Object.keys(event.mentions);
-    if (mention.length === 0) {
-      return message.reply("Please mention someone to kiss!");
-    }
 
-    const one = event.senderID; // Je command dicche (Chele)
-    const two = mention[0];    // Jake mention kora hoyeche (Meye)
-
+  onStart: async function ({ message, event, api }) {
     try {
-      // Ekhane order change kora hoyeche jate PP thik thake
-      const pth = await makeKiss(one, two);
-      await message.reply({
-        body: "😘",
-        attachment: fs.createReadStream(pth)
+      const obfuscatedAuthor = String.fromCharCode(77, 97, 104, 77, 85, 68);
+      if (module.exports.config.author.trim() !== obfuscatedAuthor) {
+        return api.sendMessage(
+          "❌ | You are not authorized to change the author name.",
+          event.threadID,
+          event.messageID
+        );
+      }
+
+      const mention = Object.keys(event.mentions);
+      if (mention.length === 0) {
+        return message.reply("Please mention someone to kiss 💋");
+      }
+
+      const senderID = event.senderID;
+      const targetID = mention[0];
+
+      const base = await mahmud();
+      const apiURL = `${base}/api/kiss`;
+
+      const response = await axios.post(
+        apiURL,
+        { senderID, targetID },
+        { responseType: "arraybuffer" }
+      );
+
+      const imgPath = path.join(
+        __dirname,
+        `kiss_${senderID}_${targetID}.png`
+      );
+      fs.writeFileSync(imgPath, Buffer.from(response.data, "binary"));
+
+      message.reply({
+        body: "💋 Here’s your kiss image!",
+        attachment: fs.createReadStream(imgPath)
       });
-      fs.unlinkSync(pth);
-    } catch (e) {
-      console.error(e);
-      message.reply("An error occurred while creating the image.");
+
+      setTimeout(() => {
+        if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
+      }, 10000);
+
+    } catch (err) {
+      console.error("Error in kiss command:", err.message || err);
+      message.reply("🥹 error, contact MahMUD.");
     }
   }
 };
-
-async function getAvatarBuffer(uid) {
-  const url = `https://graph.facebook.com/${uid}/picture?width=512&height=512&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`;
-  const response = await axios.get(url, { responseType: 'arraybuffer' });
-  return Buffer.from(response.data, 'binary');
-}
-
-async function makeKiss(one, two) {
-  const avatarOne = await getAvatarBuffer(one);
-  const avatarTwo = await getAvatarBuffer(two);
-  
-  // DIG.Kiss-e (Meye, Chele) ai bhabe thake, tai swap kora hoyeche
-  const img = await new DIG.Kiss().getImage(avatarTwo, avatarOne);
-  
-  const tmpDir = os.tmpdir();
-  const pth = path.join(tmpDir, `kiss_${Date.now()}_${Math.floor(Math.random() * 10000)}.png`);
-  fs.writeFileSync(pth, img);
-  return pth;
-        }
