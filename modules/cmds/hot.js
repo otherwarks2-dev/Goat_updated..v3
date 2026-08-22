@@ -5,7 +5,7 @@ module.exports = {
   config: {
     name: "hot",
     version: "1.0.1",
-    role: 2,
+    role: 1,
     author: "𝐌𝐀𝐌𝐔𝐍",
     description: "18+ VIDEO SEND",
     category: "adult",

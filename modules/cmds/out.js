@@ -4,7 +4,7 @@ module.exports = {
     version: "2.0",
     author: "MOHAMMAD AKASH",
     countDown: 5,
-    role: 2,
+    role: 1,
     shortDescription: "বটকে গ্রুপ থেকে বের করে দেওয়া",
     longDescription: "এই কমান্ডের মাধ্যমে বটকে বর্তমান বা নির্দিষ্ট গ্রুপ থেকে বের করে দেওয়া হয়।",
     category: "owner",

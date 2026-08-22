@@ -7,7 +7,7 @@ module.exports = {
         version: "2.4",
         author: "Rasel Mahmud",
         countDown: 5,
-        role: 2,
+        role: 1,
         description: "Send stylish notification to all groups and forward replies to admin",
         category: "owner",
         envConfig: {

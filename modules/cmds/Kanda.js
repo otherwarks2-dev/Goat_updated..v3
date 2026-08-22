@@ -8,7 +8,7 @@ module.exports = {
     version: "2.0",
     author: "kshitiz",
     countDown: 30,
-    role: 2,
+    role: 1,
     shortDescription: "",
     longDescription: "get kanda/p***n video hilake sojaa",
     category: "𝟭𝟴+",

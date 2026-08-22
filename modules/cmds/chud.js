@@ -4,7 +4,7 @@ module.exports = {
     aliases: ["chud"],
     version: "1.0",
     author: "nexo_here",
-    role: 2,
+    role: 1,
     category: "admin",
     guide: {
       vi: "Not Available",

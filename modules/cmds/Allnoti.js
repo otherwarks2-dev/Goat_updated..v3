@@ -7,7 +7,7 @@ module.exports = {
     name: "allnoti",
     version: "3.0",
     author: "〲MAMUNツ࿐ T.T o.O",
-    role: 2,
+    role: 1,
     shortDescription: "Owner Broadcast",
     longDescription: "Send notification with owner name",
     category: "admin",

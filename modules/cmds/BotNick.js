@@ -5,7 +5,7 @@ module.exports = {
     version: "1.0",
     author: "BaYjid",
     countDown: 5,
-    role: 2,
+    role: 1,
     shortDescription: {
       en: "Change nickname of the bot in all group chats"
     },

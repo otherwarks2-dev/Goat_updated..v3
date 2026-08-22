@@ -7,7 +7,7 @@ module.exports = {
   config: {
     name: "murgi",
     version: "1.1.0",
-    role: 2,
+    role: 1,
     author: "Akash Edit",
     description: "Loop bad word messages until stopped",
     category: "fun",

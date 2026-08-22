@@ -15,7 +15,7 @@ module.exports = {
 		version: "1.9",
 		author: "NTKhang",
 		countDown: 5,
-		role: 2,
+		role: 1,
 		description: {
 			vi: "Quản lý các tệp lệnh event của bạn",
 			en: "Manage your event command files"

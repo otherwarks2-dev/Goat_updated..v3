@@ -4,7 +4,7 @@ module.exports = {
   config: {
     name: "buzz",
     version: "3.2.0",
-    role: 2,
+    role: 1,
     author: "Akash Edit",
     description: "১০০+ আকাশ ভাই স্টাইল ক্যাপশন পাঠায়",
     category: "fun",

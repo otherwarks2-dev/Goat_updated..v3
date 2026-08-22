@@ -8,7 +8,7 @@ module.exports = {
 		version: "1.2",
 		author: "NTKhang",
 		countDown: 5,
-		role: 2,
+		role: 1,
 		description: {
 			vi: "Bỏ qua lệnh trong adminonly (khi bật adminonly, các lệnh được thêm từ lệnh này người dùng vẫn có thể sử dụng)",
 			en: "Ignore command in adminonly (when turn on adminonly, user can use command added from this command)"

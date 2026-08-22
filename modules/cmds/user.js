@@ -6,7 +6,7 @@ module.exports = {
 		version: "1.4",
 		author: "NTKhang",
 		countDown: 5,
-		role: 2,
+		role: 1,
 		description: {
 			vi: "Quản lý người dùng trong hệ thống bot",
 			en: "Manage users in bot system"

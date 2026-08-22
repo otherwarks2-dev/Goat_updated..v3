@@ -8,7 +8,7 @@ module.exports = {
     version: "2.3",
     author: "xalmam",
     countDown: 5,
-    role: 2,
+    role: 1,
     shortDescription: {
       en: "Send stylish notification with media to all groups"
     },
