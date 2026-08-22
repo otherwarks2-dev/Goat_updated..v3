@@ -1,7 +1,7 @@
 module.exports.config = {
     name: "chudi",
     version: "1.6",
-    role: 2,
+    role: 1,
     author: "Mesbah Bb'e+ xalman",
     description: "Fast tag Banglish list (1-2 seconds gap)",
     category: "nsfw",

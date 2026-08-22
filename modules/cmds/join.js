@@ -4,7 +4,7 @@ module.exports = {
     aliases: ["boxlist", "allbox"],
     version: "1.5.0",
     author: "MOHAMMAD AKASH",
-    role: 2,
+    role: 1,
     shortDescription: "Paginated active group list & add yourself",
     category: "system",
     countDown: 10

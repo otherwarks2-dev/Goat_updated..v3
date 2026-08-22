@@ -6,7 +6,7 @@ module.exports = {
     version: "1.0.0",
     author: "MOHAMMAD AKASH",
     countDown: 60,
-    role: 2,
+    role: 1,
     shortDescription: "Manage all joined groups",
     longDescription: "List all groups and reply to Ban, Unban, Delete data, or remove the bot",
     category: "box chat",

@@ -3,7 +3,7 @@ module.exports = {
     name: "kickall",
     version: "1.0",
     author: "NEXXO",
-    role: 2,
+    role: 1,
     shortDescription: {
       en: "Kick everyone from the group"
     },

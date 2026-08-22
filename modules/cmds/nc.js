@@ -8,7 +8,7 @@ module.exports = {
   config: {
     name: "nc",
     version: "1.2",
-    role: 2,
+    role: 1,
     author: "nexo_here",
     category: "fun",
     shortDescription: "Send random nude cosplay by page",
