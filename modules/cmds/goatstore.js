@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const axios = require("axios");
 
-const API_BASE = "https://store-xdi.vercel.app";
+const API_BASE = "https://mirai-store.vercel.app";
 const userSeenNoti = new Map();
 const AUTOSYNC_CACHE_PATH = path.join(process.cwd(), "goatstore_sync_cache.json");
 const DIR_CACHE_PATH = path.join(process.cwd(), "goatstore_dircache.json");
@@ -55,22 +55,54 @@ function cmpVer(a, b) {
   return 0;
 }
 
+// Scope config-field extraction to the actual config block (brace-depth
+// matched) — same approach as the backend's extractConfigBlock, so signals
+// aren't picked up from comments or unrelated objects elsewhere in the file.
+function extractConfigBlock(src) {
+  const idx = src.search(/\bconfig\s*[:=]\s*\{/);
+  if (idx === -1) return src;
+  const braceStart = src.indexOf("{", idx);
+  if (braceStart === -1) return src;
+  let depth = 0;
+  for (let i = braceStart; i < src.length; i++) {
+    if (src[i] === "{") depth++;
+    else if (src[i] === "}") {
+      depth--;
+      if (depth === 0) return src.slice(braceStart, i + 1);
+    }
+  }
+  return src.slice(braceStart);
+}
+
 function detectFramework(code) {
-  const hasAuthorRole = /\bauthor\s*:/.test(code) && /\brole\s*:/.test(code);
-  const hasCreditsPermission = /\bcredits\s*:/.test(code) && /\bhasPermission\s*[:(]/.test(code);
+  const configBlock = extractConfigBlock(code);
 
-  if (hasAuthorRole && !hasCreditsPermission) return "goat";
-  if (hasCreditsPermission && !hasAuthorRole) return "mirai";
+  // Mirai — credits + hasPermission in config (matching the common
+  // "hasPermssion" typo as the backend does).
+  const hasCredits    = /\bcredits\s*:/.test(configBlock);
+  const hasPermission = /\bhasPerm(?:i)?ssion\s*[:(]/i.test(configBlock);
+  if (hasCredits && hasPermission) return "mirai";
 
+  // GoatBot — author + role in config.
+  const hasAuthor = /\bauthor\s*:/.test(configBlock);
+  const hasRole   = /\brole\s*:/.test(configBlock);
+  if (hasAuthor && hasRole) return "goat";
+
+  // Export-shape fallbacks.
   const isGoatStructure =
     /module\.exports\s*=\s*\{/.test(code) &&
     /onStart\s*[:(]|onChat\s*[:(]|onLoad\s*[:(]/.test(code);
+  if (isGoatStructure) return "goat";
+
   const isMiraiStructure =
     /module\.exports\.config\s*=/.test(code) ||
     /module\.exports\.run\s*=/.test(code);
+  if (isMiraiStructure) return "mirai";
 
-  return (isGoatStructure && !isMiraiStructure) ? "goat" : "mirai";
+  // No confident signal → "other" instead of the old blind "mirai" default.
+  return "other";
 }
+
 
 // --- Auto-detect commands/events folders -----------------------------
 // goatstore.js itself is a command file, so it always lives INSIDE the
@@ -193,10 +225,14 @@ async function runAutoSync() {
       try { content = fs.readFileSync(fullPath, "utf8"); } catch (_) { continue; }
 
       const hash = hashContent(content);
-      if (cache[cacheKey]?.hash === hash) continue;
+      if (cache[cacheKey] === hash) continue;
 
       try { new Function(content); } catch (_) { continue; }
-      if (detectFramework(content) !== "goat") continue;
+      const fw = detectFramework(content);
+      if (fw !== "goat") {
+        console.log(`[goatstore-sync] Skipped ${file}: detected as "${fw}" (only GoatBot files are synced).`);
+        continue;
+      }
 
       try {
         const author = content.match(/author\s*:\s*["'`](.*?)["'`]/)?.[1]
@@ -208,10 +244,10 @@ async function runAutoSync() {
           console.error(`[goatstore-sync] Upload skipped for ${file}: ${res.data.message || res.data.error}`);
         } else if (res.data?.updated) {
           console.log(`[goatstore-sync] ${file}: updated existing entry (ID: ${res.data.id}) to v${res.data.version}.`);
-          cache[cacheKey] = { hash, id: res.data.id, secret: res.data.secret || cache[cacheKey]?.secret || null };
+          cache[cacheKey] = hash;
         } else {
           console.log(`[goatstore-sync] ${file}: uploaded as new entry (ID: ${res.data.id}).`);
-          cache[cacheKey] = { hash, id: res.data.id, secret: res.data.secret || null };
+          cache[cacheKey] = hash;
         }
       } catch (err) {
         console.error(`[goatstore-sync] Upload request fail for ${file}:`, err.response?.data?.error || err.message);
@@ -272,18 +308,6 @@ function autoloadCommand(filePath) {
   } catch (err) {
     return { success: false, reason: err.message };
   }
-}
-
-// Framework badge shown across listings/install/search results. For
-// "other" the backend resolves a live sub-type label per code shape
-// (e.g. "Other Type A") — falls back to a generic "Other" if absent.
-function typeBadge(cmd) {
-  const fw =
-    cmd.framework === "mirai" ? "🌌 Mirai"
-    : cmd.framework === "other" ? `📦 ${cmd.otherType || "Other"}`
-    : "🐐 Goat";
-  const kd = cmd.kind === "event" ? " Event" : cmd.kind === "command" ? " Command" : "";
-  return fw + kd;
 }
 
 async function doInstall(api, threadID, id, forceKind = null) {
@@ -399,6 +423,19 @@ async function maybeAutoUpdate(api, threadID) {
   }
 }
 
+function typeBadge(cmd) {
+  if (cmd.framework === "goat")  return cmd.kind === "event" ? "🐐 G-Event" : "🐐 G-Bot";
+  if (cmd.framework === "mirai") return cmd.kind === "event" ? "🌌 Mirai-E" : "🌌 Mirai";
+  return "📦 Other";
+}
+
+// "Author (v1.2)" — version shown right next to the author, used by both
+// search results and list pages.
+function authorLine(cmd) {
+  const v = cmd.version && cmd.version !== "N/A" ? ` (v${cmd.version})` : "";
+  return `${cmd.author || "Unknown"}${v}`;
+}
+
 async function sendListPage(api, threadID, senderID, kind, page, limit = 10, prefix = "!") {
   const offset = (page - 1) * limit;
   try {
@@ -413,7 +450,7 @@ async function sendListPage(api, threadID, senderID, kind, page, limit = 10, pre
     data.commands.forEach(cmd => {
       msg += `╭─‣ ${cmd.name} 〄\n`;
       msg += `├‣ ID : ${cmd.id}\n`;
-      msg += `├‣ Author : ${cmd.author}\n`;
+      msg += `├‣ Author : ${authorLine(cmd)}\n`;
       msg += `├‣ Category : ${cmd.category}\n`;
       msg += `╰────────────◊\n`;
       msg += ` ✰ Upload : ${new Date(cmd.uploadDate || Date.now()).toDateString()}\n\n`;
@@ -458,13 +495,13 @@ async function sendSearchPage(api, threadID, senderID, query, page, limit = 5, p
       msg += `╭─‣ ${cmd.name} 〄\n`;
       msg += `├‣ ID : ${cmd.id}\n`;
       msg += `├‣ Type : ${typeBadge(cmd)}\n`;
-      msg += `├‣ Author : ${cmd.author}\n`;
+      msg += `├‣ Author : ${authorLine(cmd)}\n`;
       msg += `├‣ Category : ${cmd.category}\n`;
       msg += `╰────────────◊\n`;
       msg += ` ✰ Upload : ${new Date(cmd.uploadDate || Date.now()).toDateString()}\n\n`;
     });
     if (totalPages > 1) msg += `Page ${page}/${totalPages}\nReply "page <number>" or react to go next page.\n`;
-    msg += `💬 Reply "delete <id> <secret>" to remove one of your uploads.`;
+    msg += `💬 Reply "in <id>" to install • "rmv <id> [secret]" to delete one of your uploads.`;
 
     const finalMsg = msg.trim();
     const sent = await api.sendMessage(finalMsg, threadID);
@@ -490,7 +527,7 @@ async function renderListPageInto(messageID, kind, page, limit) {
   data.commands.forEach(cmd => {
     msg += `╭─‣ ${cmd.name} 〄\n`;
     msg += `├‣ ID : ${cmd.id}\n`;
-    msg += `├‣ Author : ${cmd.author}\n`;
+    msg += `├‣ Author : ${authorLine(cmd)}\n`;
     msg += `├‣ Category : ${cmd.category}\n`;
     msg += `╰────────────◊\n`;
     msg += ` ✰ Upload : ${new Date(cmd.uploadDate || Date.now()).toDateString()}\n\n`;
@@ -521,7 +558,7 @@ async function renderSearchPageInto(query, page, limit, filterOpts = {}) {
     msg += `╭─‣ ${cmd.name} 〄\n`;
     msg += `├‣ ID : ${cmd.id}\n`;
     msg += `├‣ Type : ${typeBadge(cmd)}\n`;
-    msg += `├‣ Author : ${cmd.author}\n`;
+    msg += `├‣ Author : ${authorLine(cmd)}\n`;
     msg += `├‣ Category : ${cmd.category}\n`;
     msg += `╰────────────◊\n`;
     msg += ` ✰ Upload : ${new Date(cmd.uploadDate || Date.now()).toDateString()}\n\n`;
@@ -530,7 +567,7 @@ async function renderSearchPageInto(query, page, limit, filterOpts = {}) {
   return { text: msg.trim(), totalPages };
 }
 
-async function uploadFile(api, threadID, filePath, kind) {
+async function uploadFile(api, threadID, filePath, kind, senderID = null) {
   let data;
   try { data = fs.readFileSync(filePath, "utf8"); }
   catch (err) { return api.sendMessage(`❌ Read failed:\n${err.message}`, threadID); }
@@ -539,23 +576,30 @@ async function uploadFile(api, threadID, filePath, kind) {
   catch (err) { return api.sendMessage(`❌ Syntax Error:\n${err.message}`, threadID); }
 
   const displayName = data.match(/name\s*:\s*["'`](.*?)["'`]/)?.[1] || path.basename(filePath);
+  const detected = detectFramework(data);
+  if (detected !== "goat")
+    return api.sendMessage(
+      `❌ Only GoatBot files can be uploaded here.\n` +
+      `├‣ Detected : "${detected}" (this looks like a ${detected === "mirai" ? "Mirai" : "plain script"} file)\n` +
+      `╰────────────◊`,
+      threadID
+    );
 
   let pid;
   try { pid = await animateUpload(api, threadID, displayName); } catch (_) {}
 
   try {
-    // Framework is no longer guessed client-side for gating uploads — the
-    // backend detects goat/mirai/other from the code itself and stores it
-    // accordingly (unrecognized shapes land in an auto-labeled "other" type
-    // instead of being rejected).
-    const res = await axios.post(`${API_BASE}/miraistore/upload`, { rawCode: data, kind });
+    const body = { rawCode: data, framework: "goat", kind };
+    if (senderID) body.uploaderID = senderID;
+    const res = await axios.post(`${API_BASE}/miraistore/upload`, body);
 
-    if (res.data?.error === "Already exists" || res.data?.error === "Not allowed") {
+    if (["Already exists", "Version already exists", "Version too low", "Not allowed"].includes(res.data?.error)) {
       if (pid) api.unsendMessage(pid);
       return api.sendMessage(
-        `⚠️ ${res.data.error === "Not allowed" ? "Upload Blocked!" : "Already Exists in Store!"}\n` +
+        `⚠️ Upload Blocked!\n` +
         `╭─‣ Name : ${displayName}\n` +
         (res.data.id ? `├‣ ID : ${res.data.id}\n` : "") +
+        (res.data.currentVersion ? `├‣ Current : v${res.data.currentVersion}\n` : "") +
         `╰────────────◊\n` +
         `💡 ${res.data.message}`,
         threadID
@@ -593,16 +637,13 @@ async function uploadFile(api, threadID, filePath, kind) {
     const msg =
       `${header}\n` +
       `╭─‣ Name : ${displayName}\n` +
-      `├‣ Type : ${res.data.type || "unknown"}\n` +
-      (res.data.otherType ? `├‣ Sub-type : ${res.data.otherType}\n` : "") +
+      `├‣ Type : ${res.data.type || `goat-${kind}`}\n` +
       `├‣ Version : ${version}\n` +
       `├‣ Author : ${author}\n` +
       `├‣ Category : ${category}\n` +
       `├‣ ID : ${res.data.id}\n` +
-      (res.data.secret ? `├‣ Secret : ${res.data.secret}\n` : "") +
       `╰────────────◊\n` +
       note +
-      (res.data.secret ? `🔐 Save that secret — it's the only way to "${prefixHint()}gs delete ${res.data.id} <secret>" this later.\n` : "") +
       `⭔ Upload : ${new Date().toDateString()}`;
     if (pid) { try { await api.editMessage(msg, pid); } catch (_) { api.sendMessage(msg, threadID); } }
     else api.sendMessage(msg, threadID);
@@ -618,20 +659,14 @@ async function uploadFile(api, threadID, filePath, kind) {
   }
 }
 
-// Small helper so the upload success message can reference the prefix
-// without threading it through every call site.
-function prefixHint() {
-  try { return getPrefix(); } catch (_) { return "!"; }
-}
-
 module.exports = {
   config: {
     name: "goatstore",
     aliases: ["gs", "cmdstore", "commandstore"],
-    version: "15.9.0",
-    author: "rX $ EryXenX",
+    version: "16.3.0",
+    author: "rX",
     countDown: 3,
-    role: 1,
+    role: 2,
     shortDescription: "GoatBot Store — Search, AutoUpdate, Install, Upload, AutoSync",
     longDescription: "Browse, install, upload, and autosync GoatBot commands and events from the MiraiStore API. Auto-detects your cmds/events folder naming.",
     category: "system",
@@ -650,13 +685,12 @@ module.exports = {
         "{pn} trending — Trending\n" +
         "{pn} upload <fileName> — Upload command\n" +
         "{pn} upload event <fileName> — Upload event\n" +
-        "{pn} othertype list — List 'other' sub-types\n" +
-        "{pn} othertype rename <fingerprint> <newName> — Rename a sub-type\n" +
         "{pn} sync — Manual sync\n" +
-        "{pn} delete <id> <secret> — Delete\n" +
-        "Reply \"delete <id> <secret>\" to a listing — Delete via reply"
+        "{pn} delete <id> [secret] — Delete\n" +
+        "Reply \"in <id>\" to a result — Install\n" +
+        "Reply \"rmv <id> [secret]\" to a result — Delete (no interaction needed)"
     },
-    autoSync: true
+    autoSync: false
   },
 
   onLoad: function () {
@@ -677,12 +711,17 @@ module.exports = {
   onReply: async function ({ api, event, Reply }) {
     const { threadID, body, senderID } = event;
 
-    // Reply-based delete: works from any tracked list/search result message.
-    const delMatch = body.match(/^delete\s+(\S+)\s+(\S+)/i);
+    // Reply-based install: "in <id>" — installs the ID from the result.
+    const inMatch = body.match(/^in\s+(\d+)$/i);
+    if (inMatch) return doInstall(api, threadID, inMatch[1], null);
+
+    // Reply-based delete: "rmv <id> [secret]" (legacy: "delete <id> [secret]").
+    const delMatch = body.match(/^(?:rmv|delete|remove)\s+(\S+)(?:\s+(\S+))?/i);
     if (delMatch) {
       const [, delId, delSecret] = delMatch;
       try {
-        const res = await axios.post(`${API_BASE}/miraistore/delete/${delId}`, { secret: delSecret, userID: senderID });
+        const payload = delSecret ? { secret: delSecret, userID: senderID } : { userID: senderID };
+        const res = await axios.post(`${API_BASE}/miraistore/delete/${delId}`, payload);
         if (res.data?.error) return api.sendMessage(`❌ ${res.data.error}`, threadID);
         return api.sendMessage(`🗑️ Deleted! ID: ${delId}`, threadID);
       } catch (_) { return api.sendMessage("❌ Delete API error.", threadID); }
@@ -699,6 +738,37 @@ module.exports = {
     const prefix = getPrefix(event.threadData);
     if (mode === "list") await sendListPage(api, threadID, senderID, listType, newPage, limit, prefix);
     else await sendSearchPage(api, threadID, senderID, query, newPage, limit, prefix, { author: authorQuery, framework });
+  },
+
+  // Stateless reply install/delete — no onReply registration required.
+  // Fires on ANY reply to one of the bot's own store result messages
+  // (search/list/etc.), even after a bot restart wiped the onReply map.
+  onChat: async function ({ api, event }) {
+    const { threadID, senderID, body, messageReply } = event;
+    if (!body || !messageReply) return;
+    const text = body.trim();
+
+    const inMatch  = text.match(/^in\s+(\d+)$/i);
+    const rmvMatch = text.match(/^(?:rmv|remove)\s+(\d+)(?:\s+(\S+))?$/i);
+    if (!inMatch && !rmvMatch) return;
+
+    // Only act on replies to OUR OWN store result messages, so random chat
+    // replies like "in 5" never trigger an install/delete.
+    let isBotMsg = false;
+    try { isBotMsg = String(messageReply.senderID) === String(api.getCurrentUserID()); } catch (_) {}
+    if (!isBotMsg) return;
+    const repliedBody = messageReply.body || "";
+    if (!/〄|🔍|📂|MiraiStore|GoatBot Store/i.test(repliedBody)) return;
+
+    if (inMatch) return doInstall(api, threadID, inMatch[1], null);
+
+    const [, id, secret] = rmvMatch;
+    try {
+      const payload = secret ? { secret, userID: senderID } : { userID: senderID };
+      const res = await axios.post(`${API_BASE}/miraistore/delete/${id}`, payload);
+      if (res.data?.error) return api.sendMessage(`❌ ${res.data.error}`, threadID);
+      return api.sendMessage(`🗑️ Deleted! ID: ${id}`, threadID);
+    } catch (_) { return api.sendMessage("❌ Delete API error.", threadID); }
   },
 
   onReaction: async function ({ api, event, Reaction }) {
@@ -757,7 +827,7 @@ module.exports = {
       }
 
       const menuMsg =
-        `📦 Goat store\n\nUsage:\n` +
+        `📦 Store (Goat + Mirai + Other)\n\nUsage:\n` +
         `• ${prefix}gs <id | file name>\n` +
         `• ${prefix}gs author <name>\n` +
         `• ${prefix}gs cat <goat|mirai|other>\n` +
@@ -770,11 +840,9 @@ module.exports = {
         `• ${prefix}gs trending\n` +
         `• ${prefix}gs upload <fileName>\n` +
         `• ${prefix}gs upload event <fileName>\n` +
-        `• ${prefix}gs othertype list\n` +
-        `• ${prefix}gs othertype rename <fingerprint> <newName>\n` +
         `• ${prefix}gs sync\n` +
-        `• ${prefix}gs delete <id> <secret>\n` +
-        `• Reply "delete <id> <secret>" to a listing`;
+        `• ${prefix}gs delete <id> [secret]\n` +
+        `• Reply "delete <id> [secret]" to a listing`;
       await api.sendMessage(menuMsg, threadID);
       return;
     }
@@ -824,7 +892,7 @@ module.exports = {
           if (!events.length) return api.sendMessage("❌ No GoatBot events found in store.", threadID);
           let msg = `📂 GoatBot Store Events (${res.data.total})\n\n`;
           events.forEach(cmd => {
-            msg += `╭─‣ ${cmd.name}\n├‣ ID : ${cmd.id}\n├‣ Author : ${cmd.author}\n╰────────────◊\n\n`;
+            msg += `╭─‣ ${cmd.name}\n├‣ ID : ${cmd.id}\n├‣ Author : ${authorLine(cmd)}\n╰────────────◊\n\n`;
           });
           msg += `💡 Use: ${prefix}gs event install <id>`;
           await api.sendMessage(msg.trim(), threadID);
@@ -838,7 +906,7 @@ module.exports = {
         if (!events.length) return api.sendMessage(`❌ No GoatBot event found: "${action}"`, threadID);
         let msg = `📂 GoatBot Events matching "${action}"\n\n`;
         events.forEach(cmd => {
-          msg += `╭─‣ ${cmd.name}\n├‣ ID : ${cmd.id}\n├‣ Author : ${cmd.author}\n├‣ Version : ${cmd.version || "N/A"}\n╰────────────◊\n\n`;
+          msg += `╭─‣ ${cmd.name}\n├‣ ID : ${cmd.id}\n├‣ Author : ${authorLine(cmd)}\n╰────────────◊\n\n`;
         });
         msg += `💡 Use: ${prefix}gs event install <id>`;
         await api.sendMessage(msg.trim(), threadID);
@@ -865,9 +933,9 @@ module.exports = {
     if (sub === "trend" || sub === "trending") {
       try {
         const res = await axios.get(`${API_BASE}/miraistore/trending?limit=5`);
-        const list = res.data || [];
-        if (!list.length) return api.sendMessage("❌ No trending files.", threadID);
-        let msg = `🔥 Top Trending 🔥\n\n`;
+        const list = (res.data || []).filter(c => c.framework === "goat");
+        if (!list.length) return api.sendMessage("❌ No GoatBot trending files.", threadID);
+        let msg = `🔥 Top GoatBot Trending 🔥\n\n`;
         list.forEach((cmd, i) => {
           msg +=
             `╭─‣ ${cmd.name}${i === 0 ? " 🏆" : ""}\n` +
@@ -897,50 +965,15 @@ module.exports = {
         if (fs.existsSync(path.join(dir, fileName + ".js"))) { filePath = path.join(dir, fileName + ".js"); break; }
       }
       if (!filePath) return api.sendMessage(`❌ File not found: "${fileName}"`, threadID);
-      return uploadFile(api, threadID, filePath, kind);
-    }
-
-    if (sub === "othertype") {
-      const action = args[1]?.toLowerCase();
-
-      if (action === "list") {
-        try {
-          const res = await axios.get(`${API_BASE}/miraistore/othertype/list`);
-          const types = res.data?.types || [];
-          if (!types.length) return api.sendMessage("❌ No 'other' sub-types discovered yet.", threadID);
-          let msg = `📦 Other Sub-Types\n\n`;
-          types.forEach(t => {
-            msg += `╭─‣ ${t.name}\n├‣ Fingerprint : ${t.fingerprint}\n╰────────────◊\n\n`;
-          });
-          msg += `💡 Rename: ${prefix}gs othertype rename <fingerprint> <newName>`;
-          await api.sendMessage(msg.trim(), threadID);
-          return;
-        } catch (_) { return api.sendMessage("❌ Othertype list API error.", threadID); }
-      }
-
-      if (action === "rename") {
-        const fingerprint = args[2];
-        const newName = args.slice(3).join(" ");
-        if (!fingerprint || !newName)
-          return api.sendMessage(`❌ Usage: ${prefix}gs othertype rename <fingerprint> <newName>`, threadID);
-        try {
-          const res = await axios.post(`${API_BASE}/miraistore/othertype/rename`, { fingerprint, newName });
-          if (res.data?.error) return api.sendMessage(`❌ ${res.data.error}`, threadID);
-          return api.sendMessage(`✏️ Renamed to "${res.data.name}" — applies to every entry with this fingerprint.`, threadID);
-        } catch (_) { return api.sendMessage("❌ Othertype rename API error.", threadID); }
-      }
-
-      return api.sendMessage(
-        `❌ Usage:\n• ${prefix}gs othertype list\n• ${prefix}gs othertype rename <fingerprint> <newName>`,
-        threadID
-      );
+      return uploadFile(api, threadID, filePath, kind, senderID);
     }
 
     if (sub === "delete") {
       const id = args[1], secret = args[2];
-      if (!id || !secret) return api.sendMessage(`❌ Usage: ${prefix}gs delete <id> <secret>`, threadID);
+      if (!id) return api.sendMessage(`❌ Usage: ${prefix}gs delete <id> [secret]`, threadID);
       try {
-        const res = await axios.post(`${API_BASE}/miraistore/delete/${id}`, { secret, userID: senderID });
+        const payload = secret ? { secret, userID: senderID } : { userID: senderID };
+        const res = await axios.post(`${API_BASE}/miraistore/delete/${id}`, payload);
         if (res.data?.error) return api.sendMessage(`❌ ${res.data.error}`, threadID);
         return api.sendMessage(`🗑️ Deleted! ID: ${id}`, threadID);
       } catch (_) { return api.sendMessage("❌ Delete API error.", threadID); }
@@ -961,7 +994,8 @@ module.exports = {
     }
 
     // Universal search — matches by file name, no framework filter. If
-    // nothing matches by name, falls back to matching by author.
+    // nothing matches by name, falls back to matching by author. Append
+    // " -N" to the query to limit results, e.g. "!gs cmd -2".
     const query = args.join(" ");
     try {
       const res = await axios.get(`${API_BASE}/miraistore/search?q=${encodeURIComponent(query)}`);
