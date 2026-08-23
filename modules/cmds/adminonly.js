@@ -1,69 +1,106 @@
-const fs = require("fs-extra");
-const { config } = global.GoatBot;
-const { client } = global;
+const { writeFileSync } = require("fs-extra");
 
 module.exports = {
-	config: {
-		name: "adminonly",
-		aliases: ["adonly", "onlyad", "onlyadmin"],
-		version: "1.5",
-		author: "NTKhang",
-		countDown: 5,
-		role: 1,
-		description: {
-			vi: "bật/tắt chế độ chỉ admin mới có thể sử dụng bot",
-			en: "turn on/off only admin can use bot"
-		},
-		category: "owner",
-		guide: {
-			vi: "   {pn} [on | off]: bật/tắt chế độ chỉ admin mới có thể sử dụng bot"
-				+ "\n   {pn} noti [on | off]: bật/tắt thông báo khi người dùng không phải là admin sử dụng bot",
-			en: "   {pn} [on | off]: turn on/off the mode only admin can use bot"
-				+ "\n   {pn} noti [on | off]: turn on/off the notification when user is not admin use bot"
-		}
-	},
+    config: {
+        name: "adminonly",
+        aliases: ["ao"],
+        version: "1.0",
+        author: "rX",
+        countDown: 3,
+        role: 1, // botAdmin only (new system: 0=all, 1=botAdmin, 2=botAdmin+groupAdmin, 3=NDH/whitelist)
+        shortDescription: {
+            en: "Only bot admin can use the bot"
+        },
+        longDescription: {
+            en: "Turn admin only mode on or off. When on, only bot admin gets a response, everyone else is ignored."
+        },
+        category: "admin",
+        guide: {
+            en:
+`{pn} on              - turn admin only on
+{pn} off              - turn admin only off
+{pn} ignore <cmd>     - let a command work for everyone
+{pn} unignore <cmd>   - remove that exemption
+{pn} list             - show current status`
+        }
+    },
 
-	langs: {
-		vi: {
-			turnedOn: "Đã bật chế độ chỉ admin mới có thể sử dụng bot",
-			turnedOff: "Đã tắt chế độ chỉ admin mới có thể sử dụng bot",
-			turnedOnNoti: "Đã bật thông báo khi người dùng không phải là admin sử dụng bot",
-			turnedOffNoti: "Đã tắt thông báo khi người dùng không phải là admin sử dụng bot"
-		},
-		en: {
-			turnedOn: "Turned on the mode only admin can use bot",
-			turnedOff: "Turned off the mode only admin can use bot",
-			turnedOnNoti: "Turned on the notification when user is not admin use bot",
-			turnedOffNoti: "Turned off the notification when user is not admin use bot"
-		}
-	},
+    langs: {
+        en: {
+            on: "Admin only is now on. Only bot admin can use the bot.",
+            off: "Admin only is now off. Bot will run normally.",
+            alreadyOn: "Admin only is already on.",
+            alreadyOff: "Admin only is already off.",
+            ignoreCmdAdded: "'%1' is now exempt from admin only.",
+            ignoreCmdExists: "'%1' is already in the ignore list.",
+            ignoreCmdRemoved: "'%1' removed from the ignore list.",
+            ignoreCmdNotIn: "'%1' is not in the ignore list.",
+            noCmd: "Please give a command name.",
+            listHeader: "Admin Only Mode: %1\nIgnore Commands:\n",
+            listEmpty: "  No ignore commands set.\n",
+            listItem: "  - %1\n",
+            unknownSub: "Unknown subcommand. See {pn} help."
+        }
+    },
 
-	onStart: function ({ args, message, getLang }) {
-		let isSetNoti = false;
-		let value;
-		let indexGetVal = 0;
+    onStart: async function ({ args, message, getLang }) {
+        const { config } = global.GoatBot;
+        const ao = config.adminOnly = config.adminOnly || { status: false, ignoreCommand: [] };
+        if (!Array.isArray(ao.ignoreCommand)) ao.ignoreCommand = [];
 
-		if (args[0] == "noti") {
-			isSetNoti = true;
-			indexGetVal = 1;
-		}
+        const save = () => writeFileSync(global.client.dirConfig, JSON.stringify(config, null, 2));
 
-		if (args[indexGetVal] == "on")
-			value = true;
-		else if (args[indexGetVal] == "off")
-			value = false;
-		else
-			return message.SyntaxError();
+        const sub = (args[0] || "").toLowerCase();
 
-		if (isSetNoti) {
-			config.hideNotiMessage.adminOnly = !value;
-			message.reply(getLang(value ? "turnedOnNoti" : "turnedOffNoti"));
-		}
-		else {
-			config.adminOnly.enable = value;
-			message.reply(getLang(value ? "turnedOn" : "turnedOff"));
-		}
+        // ——— on / off ———
+        if (sub === "on") {
+            if (ao.status === true) return message.reply(getLang("alreadyOn"));
+            ao.status = true;
+            save();
+            return message.reply(getLang("on"));
+        }
 
-		fs.writeFileSync(client.dirConfig, JSON.stringify(config, null, 2));
-	}
+        if (sub === "off") {
+            if (ao.status !== true) return message.reply(getLang("alreadyOff"));
+            ao.status = false;
+            save();
+            return message.reply(getLang("off"));
+        }
+
+        // ——— ignore <cmd> ———
+        if (sub === "ignore") {
+            const cmd = args[1];
+            if (!cmd) return message.reply(getLang("noCmd"));
+            if (ao.ignoreCommand.includes(cmd)) return message.reply(getLang("ignoreCmdExists", cmd));
+            ao.ignoreCommand.push(cmd);
+            save();
+            return message.reply(getLang("ignoreCmdAdded", cmd));
+        }
+
+        // ——— unignore <cmd> ———
+        if (sub === "unignore") {
+            const cmd = args[1];
+            if (!cmd) return message.reply(getLang("noCmd"));
+            const idx = ao.ignoreCommand.indexOf(cmd);
+            if (idx === -1) return message.reply(getLang("ignoreCmdNotIn", cmd));
+            ao.ignoreCommand.splice(idx, 1);
+            save();
+            return message.reply(getLang("ignoreCmdRemoved", cmd));
+        }
+
+        // ——— list ———
+        if (sub === "list") {
+            const statusText = ao.status ? "ON" : "OFF";
+            let text = getLang("listHeader", statusText);
+            if (ao.ignoreCommand.length === 0) {
+                text += getLang("listEmpty");
+            } else {
+                ao.ignoreCommand.forEach(cmd => { text += getLang("listItem", cmd); });
+            }
+            return message.reply(text.trim());
+        }
+
+        // ——— unknown ———
+        return message.reply(getLang("unknownSub"));
+    }
 };
