@@ -44,6 +44,12 @@ module.exports = {
 
 		const configPath = path.join(process.cwd(), "config.json");
 		const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+		config.whitelist = config.whitelist || {};
+		if (typeof config.whitelist.status !== "boolean") config.whitelist.status = false;
+		if (!Array.isArray(config.whitelist.ids)) config.whitelist.ids = [];
+		if (typeof config.whitelist.threadStatus !== "boolean") config.whitelist.threadStatus = false;
+		if (!Array.isArray(config.whitelist.threadIds)) config.whitelist.threadIds = [];
+
 		const input = event.body.trim();
 		const num = parseInt(input);
 
@@ -96,10 +102,10 @@ module.exports = {
 				const menu = [
 					"⚙️ Whitelist Manage",
 					"━━━━━━━━━━━━━━━━━",
-					`1. Thread Whitelist — ${status(config.whiteListModeThread?.enable)}`,
+					`1. Thread Whitelist — ${status(config.whitelist.threadStatus)}`,
 					"2. Add Thread",
 					"3. Remove Thread",
-					`4. User Whitelist — ${status(config.whiteListMode?.enable)}`,
+					`4. User Whitelist — ${status(config.whitelist.status)}`,
 					"5. Add User",
 					"6. Remove User",
 					"━━━━━━━━━━━━━━━━━",
@@ -227,28 +233,26 @@ module.exports = {
 
 		if (state === "whitelist") {
 			if (num === 1) {
-				config.whiteListModeThread = config.whiteListModeThread || {};
-				config.whiteListModeThread.enable = !config.whiteListModeThread.enable;
+				config.whitelist.threadStatus = !config.whitelist.threadStatus;
 				saveConfig();
-				return message.reply(`✦ Thread Whitelist — ${status(config.whiteListModeThread.enable)}`);
+				return message.reply(`✦ Thread Whitelist — ${status(config.whitelist.threadStatus)}`);
 			}
 			if (num === 2) return await sendAndListen("› Reply with Thread ID to add:", "threadAdd");
 			if (num === 3) {
-				const threads = config.whiteListModeThread?.whiteListThreadIds || [];
+				const threads = config.whitelist.threadIds || [];
 				if (!threads.length) return message.reply("𝗫 No threads found.");
 				const list = threads.map((id, i) => `${i + 1}. ${id}`).join("\n");
 				await message.reply(`⚙️ Select thread to remove:\n━━━━━━━━━━━━━━━━━\n${list}\n━━━━━━━━━━━━━━━━━\n› Reply number`);
 				return await sendAndListen("› Waiting...", "threadRemoveSelect");
 			}
 			if (num === 4) {
-				config.whiteListMode = config.whiteListMode || {};
-				config.whiteListMode.enable = !config.whiteListMode.enable;
+				config.whitelist.status = !config.whitelist.status;
 				saveConfig();
-				return message.reply(`✦ User Whitelist — ${status(config.whiteListMode.enable)}`);
+				return message.reply(`✦ User Whitelist — ${status(config.whitelist.status)}`);
 			}
 			if (num === 5) return await sendAndListen("› Reply with UID or tag user to add:", "userAdd");
 			if (num === 6) {
-				const users = config.whiteListMode?.whiteListIds || [];
+				const users = config.whitelist.ids || [];
 				if (!users.length) return message.reply("𝗫 No users found.");
 				const list = users.map((id, i) => `${i + 1}. ${id}`).join("\n");
 				await message.reply(`⚙️ Select user to remove:\n━━━━━━━━━━━━━━━━━\n${list}\n━━━━━━━━━━━━━━━━━\n› Reply number`);
@@ -259,20 +263,18 @@ module.exports = {
 		if (state === "threadAdd") {
 			const tid = input;
 			if (!tid || isNaN(tid)) return message.reply("𝗫 Invalid Thread ID.");
-			config.whiteListModeThread = config.whiteListModeThread || {};
-			config.whiteListModeThread.whiteListThreadIds = config.whiteListModeThread.whiteListThreadIds || [];
-			if (config.whiteListModeThread.whiteListThreadIds.includes(tid)) return message.reply("𝗫 Already in whitelist.");
-			config.whiteListModeThread.whiteListThreadIds.push(tid);
+			if (config.whitelist.threadIds.includes(tid)) return message.reply("𝗫 Already in whitelist.");
+			config.whitelist.threadIds.push(tid);
 			saveConfig();
 			return message.reply(`✦ Thread ${tid} added.`);
 		}
 
 		if (state === "threadRemoveSelect") {
-			const threads = config.whiteListModeThread?.whiteListThreadIds || [];
+			const threads = config.whitelist.threadIds || [];
 			const idx = num - 1;
 			if (isNaN(num) || !threads[idx]) return message.reply("𝗫 Invalid selection.");
 			const removed = threads.splice(idx, 1)[0];
-			config.whiteListModeThread.whiteListThreadIds = threads;
+			config.whitelist.threadIds = threads;
 			saveConfig();
 			return message.reply(`✦ Thread ${removed} removed.`);
 		}
@@ -281,20 +283,18 @@ module.exports = {
 			let uid = input;
 			if (event.mentions && Object.keys(event.mentions).length > 0) uid = Object.keys(event.mentions)[0];
 			if (!uid || isNaN(uid)) return message.reply("𝗫 Invalid UID.");
-			config.whiteListMode = config.whiteListMode || {};
-			config.whiteListMode.whiteListIds = config.whiteListMode.whiteListIds || [];
-			if (config.whiteListMode.whiteListIds.includes(uid)) return message.reply("𝗫 Already in whitelist.");
-			config.whiteListMode.whiteListIds.push(uid);
+			if (config.whitelist.ids.includes(uid)) return message.reply("𝗫 Already in whitelist.");
+			config.whitelist.ids.push(uid);
 			saveConfig();
 			return message.reply(`✦ User ${uid} added.`);
 		}
 
 		if (state === "userRemoveSelect") {
-			const users = config.whiteListMode?.whiteListIds || [];
+			const users = config.whitelist.ids || [];
 			const idx = num - 1;
 			if (isNaN(num) || !users[idx]) return message.reply("𝗫 Invalid selection.");
 			const removed = users.splice(idx, 1)[0];
-			config.whiteListMode.whiteListIds = users;
+			config.whitelist.ids = users;
 			saveConfig();
 			return message.reply(`✦ User ${removed} removed.`);
 		}
