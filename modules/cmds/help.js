@@ -123,7 +123,7 @@ const categoryEmoji = (category) => {
     'default': '📁'
   };
   
-  const cat = category.toLowerCase();
+  const cat = (category || "").toLowerCase();
   
   if (emojiMap[cat]) {
     return emojiMap[cat];
@@ -138,11 +138,81 @@ const categoryEmoji = (category) => {
   return emojiMap.default;
 };
 
+function getHelpPages() {
+  const categories = {};
+  for (const [, c] of commands) {
+    if (!c || !c.config || !c.config.name) continue;
+    let cat = (c.config.category || "Uncategorized").trim();
+    const key = cat.toLowerCase();
+    if (!categories[key]) {
+      let displayName = cat.charAt(0).toUpperCase() + cat.slice(1);
+      categories[key] = { displayName, list: new Set() };
+    }
+    categories[key].list.add(c.config.name);
+  }
+
+  const sortedKeys = Object.keys(categories).sort();
+  const pages = [];
+  let currentMsg = "";
+  let totalCmds = 0;
+
+  for (const key of sortedKeys) {
+    const { displayName, list } = categories[key];
+    const commandsList = Array.from(list).sort();
+    totalCmds += commandsList.length;
+
+    const categoryHeader = fancyText(displayName.toUpperCase());
+    let block = `┍━━━[ ${categoryEmoji(key)} ${categoryHeader} ]━━━◊\n`;
+    for (let i = 0; i < commandsList.length; i += 2) {
+      const cmd1 = commandsList[i];
+      const cmd2 = commandsList[i + 1];
+      const line = cmd2 ?
+        `┋➥ ${cmd1.padEnd(15)} ${cmd2}` :
+        `┋➥ ${cmd1}`;
+      block += line + "\n";
+    }
+    block += "┕━━━━━━━━━━━━━━━━━━━━━━◊\n";
+
+    if (currentMsg.length + block.length > 1500 && currentMsg.length > 0) {
+      pages.push(currentMsg);
+      currentMsg = block;
+    } else {
+      currentMsg += block;
+    }
+  }
+  if (currentMsg.length > 0) {
+    pages.push(currentMsg);
+  }
+
+  return { pages, totalCmds, totalCategories: sortedKeys.length };
+}
+
+function buildPageMessage(prefix, pageNum, pages, totalCmds, totalCategories) {
+  const totalPages = pages.length;
+  const p = Math.max(1, Math.min(pageNum, totalPages));
+
+  let msg = `┍━━━[ 📚 RS• 𝗕𝗢𝗧 𝗠𝗘𝗡𝗨 (${p}/${totalPages}) ]━━━◊\n`;
+  msg += pages[p - 1];
+  msg += `┍━━━[ 📊 𝗦𝗧𝗔𝗧𝗦 ]━━━◊
+┋➥ 𝗧𝗼𝘁𝗮𝗹 𝗖𝗼𝗺𝗺𝗮𝗻𝗱𝘀: ${totalCmds}
+┋➥ 𝗧𝗼𝘁𝗮𝗹 𝗖𝗮𝘁𝗲𝗴𝗼𝗿𝗶𝗲𝘀: ${totalCategories}
+┋➥ 𝗣𝗮𝗴𝗲 ${p} 𝗼𝗳 ${totalPages}
+┍━━━[ 🚀 𝗜𝗡𝗙𝗢 ]━━━◊
+┋➥ 𝗪𝗲𝗹𝗰𝗼𝗺𝗲 𝘁𝗼 RS• 𝗕𝗼𝘁!
+┋➥ 𝗣𝗿𝗲𝗳𝗶𝘅: [ ${prefix} ]
+┋➥ 𝗗𝗲𝘃𝗲𝗹𝗼𝗽𝗲𝗿: RS•RIFAT
+┋➥ 💡 Reply a page number (1-${totalPages}) to switch page
+┋➥ 💡 Use: ${prefix}𝗵𝗲𝗹𝗽 <command> or ${prefix}𝗵𝗲𝗹𝗽 <page>
+┕━━━━━━━━━━━━━━━━━━━━━━◊`;
+
+  return { msg, page: p, totalPages };
+}
+
 module.exports = {
   config: {
     name: "help",
-    version: "2.4",
-    author: "Azadx69x",
+    version: "2.5",
+    author: "Azadx69x & rX",
     role: 0,
     countDown: 5,
     description: { 
@@ -150,17 +220,49 @@ module.exports = {
     },
     category: "Info",
     guide: {
-      en: "{pn} [command_name]"
+      en: "{pn} [command_name | page_number | all]"
     }
   },
 
-  onStart: async function ({ message, args, event, role }) {
+  onReply: async function ({ api, event, Reply }) {
+    if (event.senderID != Reply.author) return;
+    const body = (event.body || "").trim();
+    const targetPage = parseInt(body, 10);
+    if (isNaN(targetPage)) return;
+
+    const prefix = getPrefix(event.threadID);
+    const { pages, totalCmds, totalCategories } = getHelpPages();
+    if (targetPage < 1 || targetPage > pages.length) {
+      return api.sendMessage(`❌ Invalid page number! Choose between 1 and ${pages.length}.`, event.threadID, event.messageID);
+    }
+
+    const { msg, page, totalPages } = buildPageMessage(prefix, targetPage, pages, totalCmds, totalCategories);
+
+    try {
+      if (Reply.messageID) {
+        try { api.unsendMessage(Reply.messageID, () => {}); } catch (e) {}
+      }
+    } catch (e) {}
+
+    return api.sendMessage(msg, event.threadID, (err, info) => {
+      if (err || !info) return;
+      global.GoatBot.onReply.set(info.messageID, {
+        commandName: "help",
+        messageID: info.messageID,
+        author: event.senderID,
+        page,
+        totalPages
+      });
+    }, event.messageID);
+  },
+
+  onStart: async function ({ message, api, args, event, role }) {
     const prefix = getPrefix(event.threadID);
     const input = args[0]?.toLowerCase();
 
+    // Check if input is a specific command or alias
     let cmd = null;
-    
-    if (input) {
+    if (input && !/^\d+$/.test(input) && input !== "all" && input !== "page") {
       if (commands.has(input)) {
         cmd = commands.get(input);
       } else if (aliases.has(input)) {
@@ -198,7 +300,7 @@ module.exports = {
 ┋➥ 🔤 𝗔𝗹𝗶𝗮𝘀𝗲𝘀: ${aliasesList}
 ┍━━━[ 📘 𝗨𝗦𝗔𝗚𝗘 ]━━━◊
 ${usage.split('\n').map(line => `┋➥ ${line}`).join('\n')}
-┍━━━[ 💡 𝗡𝗢𝗧𝗘𝗦 ]━━━◊
+┍━━━[ 💡 𝗡𝗢𝗧𝗘 𝗠𝗘𝗦𝗦𝗔𝗚𝗘 ]━━━◊
 ┋➥ <text> = Replaceable content
 ┋➥ [a|b] = Choose option a or b
 ┋➥ ( ) = Optional parameter
@@ -216,59 +318,53 @@ ${usage.split('\n').map(line => `┋➥ ${line}`).join('\n')}
       }
       return;
     }
-      
-    const categories = {};
-    for (const [, c] of commands) {
-      if (c.config.role > role) continue;
-      const cat = c.config.category || "Uncategorized";
-      if (!categories[cat]) categories[cat] = [];
-      categories[cat].push(c.config.name);
-    }
 
-    let msg = `┍━━━[ 📚 RS• 𝗕𝗢𝗧 𝗠𝗘𝗡𝗨  ]━━━◊\n`;
-      
-    const sortedCategories = Object.keys(categories).sort();
-    
-    for (const cat of sortedCategories) {
-      const categoryName = fancyText(cat.toUpperCase());
-      const commandsList = categories[cat].sort();
-      
-      msg += `┍━━━[ ${categoryEmoji(cat)} ${categoryName} ]━━━◊\n`;
-        
-      for (let i = 0; i < commandsList.length; i += 2) {
-        const cmd1 = commandsList[i];
-        const cmd2 = commandsList[i + 1];
-        
-        const line = cmd2 ? 
-          `┋➥ ${cmd1.padEnd(15)} ${cmd2}` :
-          `┋➥ ${cmd1}`;
-        
-        msg += line + "\n";
+    const { pages, totalCmds, totalCategories } = getHelpPages();
+
+    if (input === "all") {
+      for (let i = 0; i < pages.length; i++) {
+        const { msg } = buildPageMessage(prefix, i + 1, pages, totalCmds, totalCategories);
+        await message.reply(msg);
       }
-      
-      msg += "┕━━━━━━━━━━━━━━━━━━━━━━◊\n";
+      return;
     }
 
-    const totalCommands = Object.values(categories).flat().length;
-    msg += `┍━━━[ 📊 𝗦𝗧𝗔𝗧𝗦 ]━━━◊
-┋➥ 𝗧𝗼𝘁𝗮𝗹 𝗖𝗼𝗺𝗺𝗮𝗻𝗱𝘀: ${totalCommands}
-┋➥ 𝗧𝗼𝘁𝗮𝗹 𝗖𝗮𝘁𝗲𝗴𝗼𝗿𝗶𝗲𝘀: ${sortedCategories.length}
-┋➥ 𝗔𝗹𝗹 𝗰𝗼𝗺𝗺𝗮𝗻𝗱𝘀 𝗶𝗻 𝗼𝗻𝗲 𝗽𝗮𝗴𝗲
-┍━━━[ 🚀 𝗜𝗡𝗙𝗢 ]━━━◊
-┋➥ 𝗪𝗲𝗹𝗰𝗼𝗺𝗲 𝘁𝗼 RS• 𝗕𝗼𝘁!
-┋➥ 𝗣𝗿𝗲𝗳𝗶𝘅: [ ${prefix} ]
-┋➥ 𝗗𝗲𝘃𝗲𝗹𝗼𝗽𝗲𝗿: RS•RIFAT
-┋➥ 𝗨𝘀𝗲: ${prefix}𝗵𝗲𝗹𝗽 <𝗰𝗼𝗺𝗺𝗮𝗻𝗱>
-┕━━━━━━━━━━━━━━━━━━━━━━◊`;
-      
+    let pageNum = 1;
+    if (/^\d+$/.test(input)) {
+      pageNum = parseInt(input, 10);
+    } else if (input === "page" && args[1] && /^\d+$/.test(args[1])) {
+      pageNum = parseInt(args[1], 10);
+    }
+
+    const { msg, page, totalPages } = buildPageMessage(prefix, pageNum, pages, totalCmds, totalCategories);
+
+    let replyMethod = message.reply;
+    if (api && typeof api.sendMessage === "function") {
+      return api.sendMessage(msg, event.threadID, (err, info) => {
+        if (err || !info) return;
+        global.GoatBot.onReply.set(info.messageID, {
+          commandName: "help",
+          messageID: info.messageID,
+          author: event.senderID,
+          page,
+          totalPages
+        });
+      }, event.messageID);
+    }
+
     try {
-      await message.reply({
-        body: msg,
-        attachment: await global.utils.getStreamFromURL("https://files.catbox.moe/9ti44b.mp4")
-      });
-    } catch (error) {
-      console.log("GIF attachment failed, sending text only:", error);
-      await message.reply(msg);
+      const res = await replyMethod(msg);
+      if (res && res.messageID) {
+        global.GoatBot.onReply.set(res.messageID, {
+          commandName: "help",
+          messageID: res.messageID,
+          author: event.senderID,
+          page,
+          totalPages
+        });
+      }
+    } catch (e) {
+      await replyMethod(msg);
     }
   }
 };

@@ -5,9 +5,9 @@ const axios = require("axios");
 const PASTEBIN_API = "https://pastebin-v2-chi.vercel.app";
 const IMAGE_EXTENSIONS = [".png", ".jpg", ".jpeg", ".gif", ".webp"];
 
-// True root = one level above the commands folder (so we can also browse "events", etc.)
-const ROOT_DIR = path.join(__dirname, "..");
-// Where this command file itself lives, expressed relative to ROOT_DIR (e.g. "commands")
+// Project root directory
+const ROOT_DIR = path.join(__dirname, "..", "..");
+// Where command files live relative to project root ("modules/cmds")
 const COMMANDS_RELDIR = path.relative(ROOT_DIR, __dirname).split(path.sep).join("/");
 
 // Noise we don't want cluttering the root listing
