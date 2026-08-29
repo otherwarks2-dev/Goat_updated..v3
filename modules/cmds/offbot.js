@@ -3,7 +3,7 @@ module.exports = {
         name: "offbot",
         version: "1.0.0",
         author: "RS RIFAT",
-        role: 2, // ২ মানে শুধু Bot Admin ব্যবহার করতে পারবে
+        role: 1, // 1 মানে শুধু Bot Admin ব্যবহার করতে পারবে
         shortDescription: {
             en: "turn the bot off"
         },
