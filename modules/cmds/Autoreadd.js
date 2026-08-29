@@ -19,24 +19,21 @@ module.exports = {
     version: "3.0",
     author: "Rasel Mahmud",
     countDown: 5,
-    role: 0,
+    role: 1,
     shortDescription: "Auto Re-Add left users (default ON)",
     longDescription: "Bot online হলে auto re-add সব group-এ ON থাকে। চাইলে off করা যায়।",
     category: "system",
     guide: { en: "{pn} on / off" }
   },
 
-  onStart: async function ({ api, event, args }) {
+  onStart: async function ({ api, event, args, role }) {
     const tid = event.threadID;
-    const sid = event.senderID;
 
     // permission check
-    const info = await api.getThreadInfo(tid);
-    const isGroupAdmin = info.adminIDs.some(a => a.id == sid);
-    const isBotAdmin = event.role >= 1;
+    const isBotAdmin = role !== undefined ? role >= 1 : (event.role >= 1);
 
-    if (!isGroupAdmin && !isBotAdmin) {
-      return api.sendMessage("❌ Only  Group Admin can use this command!", tid);
+    if (!isBotAdmin) {
+      return api.sendMessage("❌ Only Bot Admin can use this command!", tid);
     }
 
     let data = load();
