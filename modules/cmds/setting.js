@@ -74,13 +74,15 @@ module.exports = {
 
 		if (state === "main") {
 			if (num === 1) {
+				const threadData = global.db.allThreadData.find(t => t.threadID == event.threadID);
+				const onlyAdminBoxVal = threadData?.data?.onlyAdminBox === true;
 				const menu = [
 					"⚙️ Bot Config",
 					"━━━━━━━━━━━━━━━━━",
 					`1. Admin Only — ${status(config.adminOnly?.status)}`,
 					`2. Auto Restart — ${status(config.autoRestart?.enable)}`,
 					`3. Anti Inbox — ${status(typeof config.antiInbox === "boolean" ? config.antiInbox : config.antiInbox?.enable)}`,
-					`4. Only Admin Box — ${status(config.onlyAdminBox)}`,
+					`4. Only Admin Box — ${status(onlyAdminBoxVal)}`,
 					"━━━━━━━━━━━━━━━━━",
 					"› Reply 1-4 to toggle"
 				].join("\n");
@@ -192,9 +194,14 @@ module.exports = {
 				return message.reply(`✦ Anti Inbox — ${status(currentAntiInbox)}`);
 			}
 			if (num === 4) {
-				config.onlyAdminBox = !config.onlyAdminBox;
-				saveConfig();
-				return message.reply(`✦ Only Admin Box — ${status(config.onlyAdminBox)}`);
+				const { threadsData } = global.GoatBot;
+				const threadData = global.db.allThreadData.find(t => t.threadID == event.threadID);
+				const currentVal = threadData?.data?.onlyAdminBox === true;
+				const newVal = !currentVal;
+				if (threadsData && typeof threadsData.set === "function") {
+					await threadsData.set(event.threadID, newVal, "data.onlyAdminBox");
+				}
+				return message.reply(`✦ Only Admin Box — ${status(newVal)}`);
 			}
 		}
 
