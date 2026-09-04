@@ -15,7 +15,7 @@ module.exports = {
     category: "system"
   },
 
-  onStart: async function ({ api, event }) {
+  onStart: async function ({ api, event, threadsData }) {
     const delay = ms => new Promise(res => setTimeout(res, ms));
 
     const loadStages = [
@@ -56,8 +56,15 @@ module.exports = {
 
       let gcCount = 0;
       try {
-        const threads = await api.getThreadList(100, null, ["INBOX"]);
-        gcCount = threads.filter(t => t.isGroup).length;
+        if (threadsData && typeof threadsData.getAll === "function") {
+          const allThreads = await threadsData.getAll();
+          gcCount = allThreads.filter(t => t && t.isGroup).length;
+        } else if (global.db && Array.isArray(global.db.allThreadData)) {
+          gcCount = global.db.allThreadData.filter(t => t && t.isGroup).length;
+        } else if (api && typeof api.getThreadList === "function") {
+          const threads = await api.getThreadList(100, null, ["INBOX"]);
+          gcCount = threads.filter(t => t && t.isGroup).length;
+        }
       } catch {}
 
       const now = new Date();
@@ -98,4 +105,4 @@ module.exports = {
       } catch {}
     }, 5000);
   }
-} 
+}
