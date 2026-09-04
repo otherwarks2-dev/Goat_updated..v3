@@ -52,12 +52,40 @@ module.exports = {
     }
   },
 
-  onStart: async function ({ api, event, commandName }) {
+  onStart: async function ({ api, event, commandName, threadsData }) {
     try {
-      const threads = await api.getThreadList(100, null, ["INBOX"]);
-      const groupThreads = threads.filter(
-        (t) => t.isGroup && t.name && t.threadID
-      );
+      let groupThreads = [];
+
+      if (threadsData && typeof threadsData.getAll === "function") {
+        try {
+          const allThreads = await threadsData.getAll();
+          groupThreads = allThreads.filter(t => t && t.isGroup).map(t => ({
+            threadID: t.threadID,
+            name: t.threadName || t.name || "Unnamed Group"
+          }));
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      if (!groupThreads.length && global.db && Array.isArray(global.db.allThreadData)) {
+        groupThreads = global.db.allThreadData.filter(t => t && t.isGroup).map(t => ({
+          threadID: t.threadID,
+          name: t.threadName || t.name || "Unnamed Group"
+        }));
+      }
+
+      if (!groupThreads.length && api && typeof api.getThreadList === "function") {
+        try {
+          const threads = await api.getThreadList(100, null, ["INBOX"]);
+          groupThreads = threads.filter(t => t && t.isGroup).map(t => ({
+            threadID: t.threadID,
+            name: t.threadName || t.name || "Unnamed Group"
+          }));
+        } catch (e) {
+          console.error(e);
+        }
+      }
 
       if (groupThreads.length === 0) {
         return api.sendMessage("❌ No groups found.", event.threadID, event.messageID);
@@ -76,8 +104,8 @@ module.exports = {
 
       return api.sendMessage(msg, event.threadID, (err, info) => {
         if (err) return console.error(err);
-        
-        if (global.GoatBot) {
+
+        if (global.GoatBot && global.GoatBot.onReply) {
           global.GoatBot.onReply.set(info.messageID, {
             commandName,
             author: event.senderID,
