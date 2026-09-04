@@ -77,9 +77,9 @@ module.exports = {
 				const menu = [
 					"⚙️ Bot Config",
 					"━━━━━━━━━━━━━━━━━",
-					`1. Admin Only — ${status(config.adminOnly?.enable)}`,
+					`1. Admin Only — ${status(config.adminOnly?.status)}`,
 					`2. Auto Restart — ${status(config.autoRestart?.enable)}`,
-					`3. Anti Inbox — ${status(config.antiInbox?.enable)}`,
+					`3. Anti Inbox — ${status(typeof config.antiInbox === "boolean" ? config.antiInbox : config.antiInbox?.enable)}`,
 					`4. Only Admin Box — ${status(config.onlyAdminBox)}`,
 					"━━━━━━━━━━━━━━━━━",
 					"› Reply 1-4 to toggle"
@@ -171,9 +171,9 @@ module.exports = {
 		if (state === "botConfig") {
 			if (num === 1) {
 				config.adminOnly = config.adminOnly || {};
-				config.adminOnly.enable = !config.adminOnly.enable;
+				config.adminOnly.status = !config.adminOnly.status;
 				saveConfig();
-				return message.reply(`✦ Admin Only — ${status(config.adminOnly.enable)}`);
+				return message.reply(`✦ Admin Only — ${status(config.adminOnly.status)}`);
 			}
 			if (num === 2) {
 				config.autoRestart = config.autoRestart || {};
@@ -182,10 +182,14 @@ module.exports = {
 				return message.reply(`✦ Auto Restart — ${status(config.autoRestart.enable)}`);
 			}
 			if (num === 3) {
-				config.antiInbox = config.antiInbox || {};
-				config.antiInbox.enable = !config.antiInbox.enable;
+				if (typeof config.antiInbox === "object" && config.antiInbox !== null) {
+					config.antiInbox.enable = !config.antiInbox.enable;
+				} else {
+					config.antiInbox = !config.antiInbox;
+				}
 				saveConfig();
-				return message.reply(`✦ Anti Inbox — ${status(config.antiInbox.enable)}`);
+				const currentAntiInbox = typeof config.antiInbox === "boolean" ? config.antiInbox : config.antiInbox?.enable;
+				return message.reply(`✦ Anti Inbox — ${status(currentAntiInbox)}`);
 			}
 			if (num === 4) {
 				config.onlyAdminBox = !config.onlyAdminBox;

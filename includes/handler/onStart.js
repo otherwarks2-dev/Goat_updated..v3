@@ -126,6 +126,14 @@ module.exports = function (api, threadModel, userModel, dashBoardModel, globalMo
                 }
             } else return true;
         }
+        // Only Admin Box (Thread-specific setting toggled by onlyadminbox command)
+        if (isGroup && threadData?.data?.onlyAdminBox === true && role < 1 && role !== 2) {
+            if (!threadData?.data?.hideNotiMessageOnlyAdminBox) {
+                return await message.reply(utils.getText({ lang: langCode, head: "handlerOnStart" }, "onlyBotAndGroupAdmin", commandName));
+            }
+            return true;
+        }
+
         const roleConfig = getRoleConfig(utils, command, isGroup, threadData, commandName);
         const needRole = roleConfig.onStart;
         if (needRole > role) {
