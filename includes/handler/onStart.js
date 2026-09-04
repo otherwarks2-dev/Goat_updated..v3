@@ -104,6 +104,17 @@ module.exports = function (api, threadModel, userModel, dashBoardModel, globalMo
         // not even a hint that the command exists.
         if (!isAllowedByAccessMode(config, commandName, threadID, isGroup, senderID)) return;
 
+        // Group-level onlyAdminBox check (data.onlyAdminBox)
+        if (isGroup && threadData.data?.onlyAdminBox === true) {
+            const ignoreList = threadData.data.ignoreCommanToOnlyAdminBox || [];
+            if (role < 1 && !ignoreList.includes(commandName)) {
+                if (!threadData.data?.hideNotiMessageOnlyAdminBox) {
+                    return await message.reply(utils.getText({ lang: langCode, head: "handlerOnStart" }, "onlyAdminBox", commandName));
+                }
+                return;
+            }
+        }
+
         if (!command) {
             if (!hideNotiMessage.commandNotFound) {
                 const allCommands = Array.from(GoatBot.commands.keys());

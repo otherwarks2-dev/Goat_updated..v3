@@ -18,15 +18,21 @@ function getRole(threadData, senderID) {
     //   2 = bot admin + group admin
     //   3 = NDH — bot admin + group admin + whitelist users (highest)
     const config = global.GoatBot.config;
-    const adminBot = config.adminBot || [];
-    const ids = config.whitelist?.ids || [];
+    const adminBot = (config.adminBot || []).map(String);
+    const ids = (config.whitelist?.ids || []).map(String);
 
     if (!senderID) return 0;
+    const strSenderID = String(senderID);
     const adminBox = threadData ? (threadData.adminIDs || []) : [];
 
-    if (adminBot.includes(senderID)) return 1; // bot admin → role 1
-    if (adminBox.includes(senderID)) return 2;  // group admin → role 2 (bot admin already returned above)
-    if (ids.includes(senderID)) return 3; // whitelist/NDH → role 3
+    if (adminBot.includes(strSenderID)) return 1; // bot admin → role 1
+    const isGroupAdmin = adminBox.some(a => {
+        if (!a) return false;
+        const id = typeof a === "object" && a.id ? a.id : a;
+        return String(id) === strSenderID;
+    });
+    if (isGroupAdmin) return 2;  // group admin → role 2
+    if (ids.includes(strSenderID)) return 3; // whitelist/NDH → role 3
     return 0;
 }
 
