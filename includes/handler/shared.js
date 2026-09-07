@@ -219,19 +219,10 @@ async function buildContext({ api, threadModel, userModel, dashBoardModel, globa
             // begin with) fails create() here, buildContext() returns null,
             // and onStart/onReply/onReaction/onEvent all silently no-op —
             // the bot looks completely unresponsive in that DM.
-            const isJidThreadID = typeof threadID === 'string' && threadID.includes('@');
-            const fallbackThreadInfo = isJidThreadID ? {
-                threadName: null,
-                userInfo: [],
-                adminIDs: [],
-                nicknames: {},
-                emoji: null,
-                imageSrc: null,
-                approvalMode: null,
-                threadTheme: null,
-                threadType: isGroup === true ? 2 : 1
-            } : undefined;
-            threadData = await threadsData.create(threadID, fallbackThreadInfo);
+            // For E2EE JID threads, pass no fallbackThreadInfo — threadsData.create()
+            // now tries api.getThreadInfo() first (with its E2EE-aware override) to
+            // get the real isGroup. Only if that fails does it use a JID-suffix heuristic.
+            threadData = await threadsData.create(threadID);
             global.temp.createThreadDataError.delete(threadID);
             global.db.receivedTheFirstMessage[threadID] = true;
         } catch (err) {

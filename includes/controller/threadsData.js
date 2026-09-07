@@ -206,17 +206,37 @@ module.exports = async function (databaseType, threadModel, api, fakeGraphql) {
 				// later via refreshInfo() once/if a numeric lookup becomes possible.
 				const isJidThreadID = typeof threadID === 'string' && threadID.includes('@');
 				if (!threadInfo && isJidThreadID) {
-					threadInfo = {
-						threadName: null,
-						userInfo: [],
-						adminIDs: [],
-						nicknames: {},
-						emoji: null,
-						imageSrc: null,
-						approvalMode: null,
-						threadTheme: null,
-						threadType: 1 // default to 1-1 DM; caller can pass a real threadInfo override to mark it as a group (threadType: 2)
-					};
+					// For E2EE JID threads, api.getThreadInfo() now has an E2EE-aware
+					// override (in e2ee.js) that resolves @msgr JIDs via the numeric
+					// thread_fbid prefix, returning the real thread_type (group vs DM).
+					// Try it first so we store the correct isGroup from the start.
+					// If it fails, fall back to a minimal record using JID suffix heuristic.
+					let resolvedViaApi = false;
+					try {
+						const apiThreadInfo = await api.getThreadInfo(threadID);
+						if (apiThreadInfo && apiThreadInfo.threadID) {
+							threadInfo = apiThreadInfo;
+							resolvedViaApi = true;
+						}
+					} catch (_) {}
+
+					if (!resolvedViaApi) {
+						// @g.us and @group.facebook.com are always groups.
+						// @msgr is ambiguous — default false (DM); buildContext will
+						// correct it from threadData.isGroup once the DB record exists.
+						const isGroupJid = /@(?:g\.us|group\.facebook\.com)$/i.test(threadID);
+						threadInfo = {
+							threadName: null,
+							userInfo: [],
+							adminIDs: [],
+							nicknames: {},
+							emoji: null,
+							imageSrc: null,
+							approvalMode: null,
+							threadTheme: null,
+							threadType: isGroupJid ? 2 : 1
+						};
+					}
 				}
 				threadInfo = threadInfo || await api.getThreadInfo(threadID);
 				const { threadName, userInfo, adminIDs } = threadInfo;
@@ -295,16 +315,20 @@ module.exports = async function (databaseType, threadModel, api, fakeGraphql) {
 						}));
 					}
 					const threadInfo = await get_(threadID);
-					// E2EE (Labyrinth) threadIDs are JIDs — api.getThreadInfo() can't
-					// resolve those, so there's nothing to refresh; keep whatever
-					// data we already have instead of calling the FB API and
-					// throwing. This call isn't wrapped in try/catch by its caller
-					// (buildContext's "autoRefreshThreadInfoFirstTime" branch), so
-					// letting it throw here silently killed the whole event pipeline
-					// for that thread on the first message after every bot restart.
+					// For E2EE @msgr JIDs, api.getThreadInfo() now has an E2EE-aware
+					// override that resolves the thread via its numeric thread_fbid prefix.
+					// Try it; if it succeeds, we refresh with real data (correct isGroup,
+					// participants, etc.). If it fails, skip gracefully — better than
+					// silently killing the event pipeline by letting an unhandled throw
+					// propagate through buildContext's autoRefreshThreadInfoFirstTime path.
 					const isJidThreadID = typeof threadID === 'string' && threadID.includes('@');
 					if (!newThreadInfo && isJidThreadID) {
-						return resolve(threadInfo);
+						try {
+							newThreadInfo = await api.getThreadInfo(threadID);
+						} catch (_) {
+							return resolve(threadInfo); // skip refresh gracefully if API fails
+						}
+						if (!newThreadInfo || !newThreadInfo.threadID) return resolve(threadInfo);
 					}
 					newThreadInfo = newThreadInfo || await api.getThreadInfo(threadID);
 					const { userInfo, adminIDs, nicknames } = newThreadInfo;
