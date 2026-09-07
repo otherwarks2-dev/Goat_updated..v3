@@ -1,0 +1,8 @@
+[phases.setup]
+nixPkgs = ["nodejs_20"]
+
+[phases.install]
+cmds = ["npm install --ignore-scripts || true", "cp -r node_modules/@rxabdullah/xdi-fca /tmp/xdi-fca-fixed && npm install && cp -r /tmp/xdi-fca-fixed node_modules/@rxabdullah/xdi-fca"]
+
+[start]
+cmd = "node index.js"
