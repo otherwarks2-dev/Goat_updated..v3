@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const axios = require("axios");
+const premium = require("./premium");
 
 const API_BASE = "https://mirai-store.vercel.app";
 const userSeenNoti = new Map();
@@ -231,12 +232,13 @@ async function checkSelfUpdate() {
   } catch (_) { return null; }
 }
 
-async function getTodayUpdates() {
+async function getTodayUpdates(senderID = null) {
   try {
     const res = await axios.get(`${API_BASE}/miraistore/list?limit=50&framework=goat`);
     const today = new Date().toDateString();
     return (res.data.commands || [])
-      .filter(cmd => new Date(cmd.uploadDate).toDateString() === today);
+      .filter(cmd => new Date(cmd.uploadDate).toDateString() === today)
+      .filter(cmd => premium.isPremiumViewer(senderID) || !premium.isPremiumCmd(cmd.name, cmd.author));
   } catch (_) { return []; }
 }
 
@@ -357,7 +359,7 @@ function autoloadCommand(filePath) {
   }
 }
 
-async function doInstall(api, threadID, id, forceKind = null) {
+async function doInstall(api, threadID, senderID, id, forceKind = null) {
   let cmdData = null;
   try {
     const res = await axios.get(`${API_BASE}/miraistore/search?q=${encodeURIComponent(id)}`);
@@ -379,6 +381,7 @@ async function doInstall(api, threadID, id, forceKind = null) {
   try { new Function(cmdData.rawCode); }
   catch (err) { return api.sendMessage(`❌ Syntax error in remote code.\n${err.message}`, threadID); }
 
+  if (premium.isPremiumCmd(cmdData.name, cmdData.author)    && !premium.canExecutePremium(senderID, cmdData.name, cmdData.author))    return api.sendMessage("*This command is premium only*", threadID);
   const displayName = cmdData.name || `gs_${id}`;
   const isEvent = forceKind === "event" ? true : forceKind === "command" ? false : cmdData.kind === "event";
 
@@ -485,8 +488,10 @@ function authorLine(cmd) {
 
 // Result block — ID kept, Version on its own line below Author.
 function resultBlock(cmd) {
+  const isP = premium.isPremiumCmd(cmd.name, cmd.author);
+  const nameLine =isP ? `\u262F ${cmd.name}` : cmd.name;
   return (
-    `╭─‣ ${cmd.name} 〄\n` +
+    `╭─‣ ${nameLine} 〄\n` +
     `├‣ ID : ${cmd.id}\n` +
     `├‣ Type : ${typeBadge(cmd)}\n` +
     `├‣ Author : ${cmd.author || "Unknown"}\n` +
@@ -498,8 +503,10 @@ function resultBlock(cmd) {
 }
 
 function listBlock(cmd) {
+  const isP = premium.isPremiumCmd(cmd.name, cmd.author);
+  const nameLine =isP ? `\u262F ${cmd.name}` : cmd.name;
   return (
-    `╭─‣ ${cmd.name} 〄\n` +
+    `╭─‣ ${nameLine} 〄\n` +
     `├‣ ID : ${cmd.id}\n` +
     `├‣ Author : ${cmd.author || "Unknown"}\n` +
     `├‣ Version : ${cmd.version && cmd.version !== "N/A" ? ` ${cmd.version}` : " N/A"}\n` +
@@ -520,7 +527,7 @@ async function sendListPage(api, threadID, senderID, kind, page, limit = 10, pre
     const totalPages = Math.ceil(data.total / limit);
     const label = kind === "event" ? "GoatBot Events" : "GoatBot Commands";
     let msg = `📂 ${label} — Page ${page}/${totalPages} (${data.total} total)\n\n`;
-    data.commands.forEach(cmd => { msg += listBlock(cmd); });
+        data.commands.forEach(cmd => { if (premium.isFiltered(cmd.name, cmd.author, senderID)) return; msg += listBlock(cmd); });
     if (totalPages > 1) msg += `⏤͟͟͞͞  Page ${page}/${totalPages}\n╭‣ React or reply p ${page + 1 <= totalPages ? page + 1 : page} for nxt pg\n`;
     msg += `╰‣ reply in <id> for install`;
 
@@ -566,7 +573,7 @@ async function sendSearchPage(api, threadID, senderID, query, page, limit = 5, p
     const title = searchTitle(query, filterOpts);
 
     let msg = `${title} (${total} found)\n\n`;
-    data.commands.forEach(cmd => { msg += resultBlock(cmd); });
+    data.commands.forEach(cmd => { if (premium.isFiltered(cmd.name, cmd.author, senderID)) return; msg += resultBlock(cmd); });
     if (totalPages > 1) msg += `⏤͟͟͞͞  Page ${page}/${totalPages}\n╭‣ React or reply p ${page + 1 <= totalPages ? page + 1 : page} for nxt pg\n`;
     msg += `╰‣ reply in <id> for install`;
 
@@ -583,7 +590,7 @@ async function sendSearchPage(api, threadID, senderID, query, page, limit = 5, p
   } catch (_) { api.sendMessage("❌ Search API error.", threadID); }
 }
 
-async function renderListPageInto(messageID, kind, page, limit) {
+async function renderListPageInto(messageID, kind, page, limit, senderID = null) {
   const offset = (page - 1) * limit;
   const res = await axios.get(`${API_BASE}/miraistore/list?limit=${limit}&offset=${offset}&framework=goat&kind=${kind}`);
   const data = res.data;
@@ -592,7 +599,7 @@ async function renderListPageInto(messageID, kind, page, limit) {
   const totalPages = Math.ceil(data.total / limit);
   const label = kind === "event" ? "GoatBot Events" : "GoatBot Commands";
   let msg = `📂 ${label} — Page ${page}/${totalPages} (${data.total} total)\n\n`;
-  data.commands.forEach(cmd => { msg += listBlock(cmd); });
+  data.commands.forEach(cmd => { if (premium.isFiltered(cmd.name, cmd.author, senderID)) return; msg += listBlock(cmd); });
   if (totalPages > 1) msg += `⏤͟͟͞͞  Page ${page}/${totalPages}\n╭‣ React or reply p ${page + 1 <= totalPages ? page + 1 : page} for nxt pg\n`;
   msg += `╰‣ reply in <id> for install`;
   return { text: msg.trim(), totalPages };
@@ -616,7 +623,7 @@ async function renderSearchPageInto(query, page, limit, filterOpts = {}) {
   const title = searchTitle(query, filterOpts);
 
   let msg = `${title} (${total} found)\n\n`;
-  data.commands.forEach(cmd => { msg += resultBlock(cmd); });
+  data.commands.forEach(cmd => { if (premium.isFiltered(cmd.name, cmd.author, senderID)) return; msg += resultBlock(cmd); });
   if (totalPages > 1) msg += `⏤͟͟͞͞  Page ${page}/${totalPages}\n╭‣ React or reply p ${page + 1 <= totalPages ? page + 1 : page} for nxt pg\n`;
   msg += `╰‣ reply in <id> for install`;
   return { text: msg.trim(), totalPages };
@@ -718,7 +725,7 @@ module.exports = {
   config: {
     name: "goatstore",
     aliases: ["gs", "cmdstore", "commandstore"],
-    version: "19.4.0",
+    version: "19.5.0",
     author: "rX",
     countDown: 3,
     role: 1,
@@ -743,6 +750,12 @@ module.exports = {
         "{pn} upload <fileName> — Upload a command file\n" +
         "{pn} sync — Manual sync\n" +
         "{pn} dirs — Show & re-detect cmds/events locations\n" +
+        "{pn} pr add <uid> — Add premium user (admin, or reply to a msg)\n" +
+        "{pn} pr remove <uid> — Remove premium user (admin)\n" +
+        "{pn} pr upload <cmdname> — Mark a command premium (admin)\n" +
+        "{pn} pr delete <cmdname> — Unmark a command (admin)\n" +
+        "{pn} pr author add|remove <authorname> — Premium by author (admin)\n" +
+        "{pn} pr list — Show premium state (admin)\n" +
         "Reply \"in\" to a single result — Install\n" +
         "Reply \"in <id>\" to a list result — Install"
     },
@@ -750,6 +763,14 @@ module.exports = {
   },
 
   onLoad: function () {
+    // Premium cache: warm it immediately, then keep it fresh in the
+    // background (module.exports.refresh already fires once on require,
+    // this just adds the recurring poll — same 5s-stagger convention as
+    // the other onLoad timers below).
+    setTimeout(() => {
+      premium.refresh(true).catch(() => {});
+      setInterval(() => { premium.refresh(true).catch(() => {}); }, 1000 * 60 * 5);
+    }, 5000);
     // Silent self-update, fully automatic — no subcommand needed.
     setTimeout(() => {
       maybeAutoUpdate(null, null).catch(() => {});
@@ -771,8 +792,8 @@ module.exports = {
     // bare "in" installs the single-result ID stashed on the reply handler.
     const inIdMatch = body.match(/^in\s+(\d+)$/i);
     const inBareMatch = /^in$/i.test(body.trim());
-    if (inIdMatch) return doInstall(api, threadID, inIdMatch[1], null);
-    if (inBareMatch && Reply?.singleId) return doInstall(api, threadID, Reply.singleId, null);
+    if (inIdMatch) return doInstall(api, threadID, senderID, inIdMatch[1], null);
+    if (inBareMatch && Reply?.singleId) return doInstall(api, threadID, senderID, Reply.singleId, null);
 
     // Reply-based delete: "rmv <id> [secret]" (legacy: "delete <id> [secret]").
     const delMatch = body.match(/^(?:rmv|delete|remove)\s+(\S+)(?:\s+(\S+))?/i);
@@ -819,7 +840,7 @@ module.exports = {
     const repliedBody = messageReply.body || "";
     if (!/〄|🔍|📂|MiraiStore|GoatBot Store/i.test(repliedBody)) return;
 
-    if (inMatch) return doInstall(api, threadID, inMatch[1], null);
+    if (inMatch) return doInstall(api, threadID, senderID, inMatch[1], null);
 
     const [, id, secret] = rmvMatch;
     try {
@@ -841,7 +862,7 @@ module.exports = {
 
     try {
       const rendered = mode === "list"
-        ? await renderListPageInto(messageID, listType, nextPage, limit)
+        ? await renderListPageInto(messageID, listType, nextPage, limit, senderID)
         : await renderSearchPageInto(query, nextPage, limit, { author: authorQuery, framework, kind, category });
 
       if (!rendered) return api.sendMessage("❌ No results found for this page.", threadID);
@@ -869,17 +890,107 @@ module.exports = {
     const { threadID, senderID } = event;
     const sub = args[0]?.toLowerCase() || null;
     const prefix = getPrefix(threadData || event?.threadData);
+    // ---- Premium commands management (admin-only) ---------------------
+    // `gs pr ...` — every mutation is validated against the store admin UID
+    // via senderId. Non-admin callers always get the same canned refusal.
+
+
+
+    if (sub === "pr" || sub === "premium") {
+      if (!premium.isAdmin(senderID)) return api.sendMessage("*store admin only cmd*", threadID);
+
+      const pSub = args[1]?.toLowerCase() || null;
+      const resolveUid = () => {
+        if (args[2]) return args[2];
+        if (event.messageReply?.senderID) return event.messageReply.senderID;
+
+
+
+        return null;
+      };
+
+      if (pSub === "add") {
+        const uid = resolveUid();
+        if (!uid) return api.sendMessage(`❌ Usage: ${prefix}gs pr add <uid> (or reply to a message)`, threadID);
+        const r = await premium.addPremiumUser(uid, senderID);
+        return api.sendMessage(r.ok ? `✅ Premium user added: ${uid}` : `❌ ${r.error}`, threadID);
+      }
+
+      if (pSub === "remove" || pSub === "rm") {
+        const uid = resolveUid();
+        if (!uid) return api.sendMessage(`❌ Usage: ${prefix}gs pr remove <uid> (or reply to a message)`, threadID);
+        const r = await premium.removePremiumUser(uid, senderID);
+        return api.sendMessage(r.ok ? `✅ Premium user removed: ${uid}` : `❌ ${r.error}`, threadID);
+      }
+
+      if (pSub === "upload") {
+        const cmdName = args.slice(2).join(" ");
+        if (!cmdName) return api.sendMessage(`❌ Usage: ${prefix}gs pr upload <cmdname>`, threadID);
+        const r = await premium.addPremiumCmd(cmdName, senderID);
+        return api.sendMessage(r.ok ? `✅ "${cmdName}" is now a premium command` : `❌ ${r.error}`, threadID);
+      }
+
+      if (pSub === "delete" || pSub === "del") {
+        const cmdName = args.slice(2).join(" ");
+        if (!cmdName) return api.sendMessage(`❌ Usage: ${prefix}gs pr delete <cmdname>`, threadID);
+        const r = await premium.removePremiumCmd(cmdName, senderID);
+        return api.sendMessage(r.ok ? `✅ Premium status removed from "${cmdName}"` : `❌ ${r.error}`, threadID);
+      }
+
+      if (pSub === "author") {
+        const aSub = args[2]?.toLowerCase() || null;
+        const authorName = args.slice(3).join(" ");
+        if (aSub === "add") {
+          if (!authorName) return api.sendMessage(`❌ Usage: ${prefix}gs pr author add <authorname>`, threadID);
+          const r = await premium.addPremiumAuthor(authorName, senderID);
+          return api.sendMessage(r.ok ? `✅ All commands by "${authorName}" are now premium` : `❌ ${r.error}`, threadID);
+        }
+        if (aSub === "remove" || aSub === "rm") {
+          if (!authorName) return api.sendMessage(`❌ Usage: ${prefix}gs pr author remove <authorname>`, threadID);
+          const r = await premium.removePremiumAuthor(authorName, senderID);
+          return api.sendMessage(r.ok ? `✅ Premium status removed from author "${authorName}"` : `❌ ${r.error}`, threadID);
+        }
+        return api.sendMessage(`❌ Usage: ${prefix}gs pr author add|remove <authorname>`, threadID);
+      }
+
+      if (pSub === "list" || pSub === "ls") {
+        const s = premium.listPremium();
+        const fmt = a => a.length ? a.map(x => `• ${x}`).join("\n") : "—";
+        return api.sendMessage(
+          `👑 Store Admin: ${s.adminUid}\n` +
+          `━━━━━━━━━━━━━━━━━━\n` +
+          `👤 Premium Users:\n${fmt(s.premiumUsers)}\n` +
+          `━━━━━━━━━━━━━━━━━━\n` +
+          `☯ Premium Commands:\n${fmt(s.premiumCommands)}\n` +
+          `━━━━━━━━━━━━━━━━━━\n` +
+          `⛨ Premium Authors:\n${fmt(s.premiumAuthors)}`,
+          threadID
+        );
+      }
+
+      return api.sendMessage(
+        `📜 Premium Manager\n` +
+        `• ${prefix}gs pr add <uid> — add premium user (or reply to a message\n` +
+        `• ${prefix}gs pr remove <uid> — remove premium user\n` +
+        `• ${prefix}gs pr upload <cmdname> — mark a command premium\n` +
+        `• ${prefix}gs pr delete <cmdname> — unmark a command\n` +
+        `• ${prefix}gs pr author add|remove <authorname>\n` +
+        `• ${prefix}gs pr list — show premium state`,
+        threadID
+      );
+    }
+
 
     // Silent self-update also runs on every invocation (cheap, cached) as a
     // backup to the background timer in onLoad — no subcommand, no chat noise.
     maybeAutoUpdate(api, threadID).catch(() => {});
 
     if (!sub) {
-      const updates = await getTodayUpdates();
+      const updates = await getTodayUpdates(senderID);
 
       if (updates.length && !userSeenNoti.get(senderID)) {
         let n = `🔔 [ NOTIFICATION ]\nToday ${updates.length} GoatBot update(s)!\n━━━━━━━━━━━━━━━━━━\n`;
-        updates.forEach(f => n += ` ‣ ${f.name} (ID: ${f.id})\n`);
+        updates.forEach(f => { if (premium.isFiltered(f.name, f.author, senderID)) return; n += ` ‣ ${f.name} (ID: ${f.id})\n`; });
         n += `\n(Type "${prefix}gs n" for details or "${prefix}gs" again for menu)`;
         userSeenNoti.set(senderID, true);
         return api.sendMessage(n, threadID);
@@ -900,13 +1011,13 @@ module.exports = {
     }
 
     if (sub === "n" || sub === "notification") {
-      const updates = await getTodayUpdates();
+      const updates = await getTodayUpdates(senderID);
       if (!updates.length)
         return api.sendMessage("📅 No GoatBot updates today.", threadID);
       let msg = `📂 Today's GoatBot Updates\n━━━━━━━━━━━━━━━━━━\n`;
-      updates.forEach(cmd =>
-        msg += `╭─‣ ${cmd.name}\n├‣ ID: ${cmd.id}\n├‣ Type: ${typeBadge(cmd)}\n├‣ Author: ${cmd.author}\n╰────────────◊\n\n`
-      );
+      updates.forEach(cmd => {
+        if (premium.isFiltered(cmd.name, cmd.author, senderID)) return;
+        msg += `╭─‣ ${cmd.name}\n├‣ ID: ${cmd.id}\n├‣ Type: ${typeBadge(cmd)}\n├‣ Author: ${cmd.author}\n╰────────────◊\n\n`;  });
       await api.sendMessage(msg.trim(), threadID);
       return;
     }
@@ -949,7 +1060,7 @@ module.exports = {
       if (action === "install") {
         const id = args[2];
         if (!id) return api.sendMessage(`❌ Usage: ${prefix}gs -e install <id>`, threadID);
-        return doInstall(api, threadID, id, "event");
+        return doInstall(api, threadID, senderID, id, "event");
       }
 
       if (action === "upload") {
@@ -967,6 +1078,7 @@ module.exports = {
           if (!events.length) return api.sendMessage("❌ No GoatBot events found in store.", threadID);
           let msg = `📂 GoatBot Store Events (${res.data.total})\n\n`;
           events.forEach(cmd => {
+            if (premium.isFiltered(cmd.name, cmd.author, senderID)) return;
             msg += `╭─‣ ${cmd.name}\n├‣ ID : ${cmd.id}\n├‣ Author : ${authorLine(cmd)}\n╰────────────◊\n\n`;
           });
           msg += `💡 Use: ${prefix}gs -e install <id>`;
@@ -981,6 +1093,7 @@ module.exports = {
         if (!events.length) return api.sendMessage(`❌ No GoatBot event found: "${action}"`, threadID);
         let msg = `📂 GoatBot Events matching "${action}"\n\n`;
         events.forEach(cmd => {
+          if (premium.isFiltered(cmd.name, cmd.author, senderID)) return;
           msg += `╭─‣ ${cmd.name}\n├‣ ID : ${cmd.id}\n├‣ Author : ${authorLine(cmd)}\n╰────────────◊\n\n`;
         });
         msg += `💡 Use: ${prefix}gs -e install <id>`;
@@ -992,7 +1105,7 @@ module.exports = {
     if (sub === "install") {
       const id = args[1];
       if (!id) return api.sendMessage(`❌ Usage: ${prefix}gs install <id>`, threadID);
-      return doInstall(api, threadID, id, null);
+      return doInstall(api, threadID, senderID, id, null);
     }
 
     if (sub === "like") {
@@ -1012,6 +1125,7 @@ module.exports = {
         if (!list.length) return api.sendMessage("❌ No trending files.", threadID);
         let msg = `🔥 Top Trending 🔥\n\n`;
         list.forEach((cmd, i) => {
+          if (premium.isFiltered(cmd.name, cmd.author, senderID)) return;
           msg +=
             `╭─‣ ${cmd.name}${i === 0 ? " 🏆" : ""}\n` +
             `├‣ Type : ${typeBadge(cmd)}\n` +
@@ -1079,20 +1193,30 @@ module.exports = {
       if (!data || data.message) return api.sendMessage("❌ Not found.", threadID);
 
       if (!isNaN(query) && !Array.isArray(data) && !data.commands) {
-        const finalMsg =
-          `${typeBadge(data)}\n` +
-          `╭─‣ Name : ${data.name}\n` +
-          `├‣ Author : ${data.author}\n` +
-          `├‣ Version : ${data.version || "N/A"}\n` +
-          `├‣ Category : ${data.category}\n` +
-          `├‣ Views : 👁️ ${data.views}\n` +
-          `├‣ Likes : ❤️ ${data.likes}\n` +
-          `├‣ Installs : ⬇️ ${data.installs}\n` +
-          `╰────────────◊\n` +
-          `⭔ Description: ${data.description || "No description"}\n` +
-          `⭔ Upload : ${new Date(data.uploadDate || Date.now()).toDateString()}\n` +
-          `🌐 URL : ${data.rawUrl}\n\n` +
-          `💬 Reply "in" to install`;
+        const isPrem = premium.isPremiumCmd(data.name, data.author);
+        if (isPrem && !premium.isPremiumViewer(senderID))
+          return api.sendMessage("*This command is premium only*", threadID);
+
+        // Premium commands: no rawUrl leak — render as a search-result
+        // block (same as resultBlock in list/search views) instead of
+        // the full detail view.
+        const finalMsg = isPrem
+          ? resultBlock(data) + `💬 Reply "in" to install`
+          : (
+              `${typeBadge(data)}\n` +
+              `╭─‣ Name : ${data.name}\n` +
+              `├‣ Author : ${data.author}\n` +
+              `├‣ Version : ${data.version || "N/A"}\n` +
+              `├‣ Category : ${data.category}\n` +
+              `├‣ Views : 👁️ ${data.views}\n` +
+              `├‣ Likes : ❤️ ${data.likes}\n` +
+              `├‣ Installs : ⬇️ ${data.installs}\n` +
+              `╰────────────◊\n` +
+              `⭔ Description: ${data.description || "No description"}\n` +
+              `⭔ Upload : ${new Date(data.uploadDate || Date.now()).toDateString()}\n` +
+              `🌐 URL : ${data.rawUrl}\n\n` +
+              `💬 Reply "in" to install`
+            );
         const sent = await api.sendMessage(finalMsg, threadID);
         const h = { commandName: "goatstore", messageID: sent.messageID, singleId: data.id, mode: "single", senderID, editCount: 0 };
         global.GoatBot.onReply.set(sent.messageID, h);
