@@ -67,7 +67,7 @@
 		"yumi-json-bigint": "^1.0.0"
 	},
 	"scripts": {
-		"start": "node index.js",
+		"start": "set NODE_ENV=&& node index.js",
 		"dev": "set NODE_ENV=development&& node index.js",
 		"prod": "set NODE_ENV=production&& node index.js"
 	},

@@ -210,36 +210,38 @@ async function buildContext({ api, threadModel, userModel, dashBoardModel, globa
     if (!threadData && isValidID(threadID)) {
         const lastFailedAt = global.temp.createThreadDataError.get(threadID);
         if (lastFailedAt && (Date.now() - lastFailedAt) < 60 * 1000) return null;
-
-        // If CheckData.js is already in the middle of creating this thread
-        // (it runs before buildContext and calls threadsData.create() which
-        // may be awaiting getThreadInfo), wait for that promise instead of
-        // racing it. Without this wait, the first message always silently
-        // dropped because buildContext saw no threadData, tried to create,
-        // got DATA_ALREADY_EXISTS, then looked up allThreadData — but the
-        // record hadn't been pushed yet because CheckData's create() was
-        // still awaiting the API. Result: null return, command ignored.
-        const inCreating = global.client.database.creatingThreadData.find(t => t.threadID == threadID);
-        if (inCreating) {
-            try {
-                await inCreating.promise;
-            } catch (_) {}
+        try {
+            // E2EE (Labyrinth) threadIDs are JIDs — api.getThreadInfo() can't
+            // resolve those, so build a minimal fallback record instead of
+            // letting threadsData.create() call the FB API and throw. Without
+            // this, every E2EE thread without an existing DB record (typically
+            // every 1-1 E2EE DM, since those never had a "classic" thread to
+            // begin with) fails create() here, buildContext() returns null,
+            // and onStart/onReply/onReaction/onEvent all silently no-op —
+            // the bot looks completely unresponsive in that DM.
+            const isJidThreadID = typeof threadID === 'string' && threadID.includes('@');
+            const fallbackThreadInfo = isJidThreadID ? {
+                threadName: null,
+                userInfo: [],
+                adminIDs: [],
+                nicknames: {},
+                emoji: null,
+                imageSrc: null,
+                approvalMode: null,
+                threadTheme: null,
+                threadType: isGroup === true ? 2 : 1
+            } : undefined;
+            threadData = await threadsData.create(threadID, fallbackThreadInfo);
+            global.temp.createThreadDataError.delete(threadID);
+            global.db.receivedTheFirstMessage[threadID] = true;
+        } catch (err) {
+            if (err.name != "DATA_ALREADY_EXISTS") {
+                global.temp.createThreadDataError.set(threadID, Date.now());
+                log.err("DATABASE", `Can't create thread data for ${threadID}`, err.message || err);
+                return null;
+            }
             threadData = global.db.allThreadData.find(t => t.threadID == threadID);
             if (!threadData) return null;
-        } else {
-            try {
-                threadData = await threadsData.create(threadID);
-                global.temp.createThreadDataError.delete(threadID);
-                global.db.receivedTheFirstMessage[threadID] = true;
-            } catch (err) {
-                if (err.name != "DATA_ALREADY_EXISTS") {
-                    global.temp.createThreadDataError.set(threadID, Date.now());
-                    log.err("DATABASE", `Can't create thread data for ${threadID}`, err.message || err);
-                    return null;
-                }
-                threadData = global.db.allThreadData.find(t => t.threadID == threadID);
-                if (!threadData) return null;
-            }
         }
     } else {
         if (autoRefreshThreadInfoFirstTime === true && !global.db.receivedTheFirstMessage[threadID]) {
