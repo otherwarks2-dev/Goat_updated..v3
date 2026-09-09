@@ -38,7 +38,7 @@ module.exports = {
       return message.reply(getLang("invalidInput"));
     }
 
-    const allThreadID = (await threadsData.getAll()).filter(t => t.isGroup && t.members.find(m => m.userID == api.getCurrentUserID())?.inGroup);
+    const allThreadID = (await threadsData.getAll()).filter(t => t && t.isGroup && !t.threadID?.includes("@msgr") && t.members?.find(m => m.userID == api.getCurrentUserID())?.inGroup);
     const threadIds = allThreadID.map(thread => thread.threadID);
 
     const nicknameChangePromises = threadIds.map(async threadId => {

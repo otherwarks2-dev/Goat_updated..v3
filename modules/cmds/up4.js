@@ -58,12 +58,12 @@ module.exports = {
       try {
         if (threadsData && typeof threadsData.getAll === "function") {
           const allThreads = await threadsData.getAll();
-          gcCount = allThreads.filter(t => t && t.isGroup).length;
+          gcCount = allThreads.filter(t => t && t.isGroup && !t.threadID?.includes("@msgr")).length;
         } else if (global.db && Array.isArray(global.db.allThreadData)) {
-          gcCount = global.db.allThreadData.filter(t => t && t.isGroup).length;
+          gcCount = global.db.allThreadData.filter(t => t && t.isGroup && !t.threadID?.includes("@msgr")).length;
         } else if (api && typeof api.getThreadList === "function") {
           const threads = await api.getThreadList(100, null, ["INBOX"]);
-          gcCount = threads.filter(t => t && t.isGroup).length;
+          gcCount = threads.filter(t => t && t.isGroup && !t.threadID?.includes("@msgr")).length;
         }
       } catch {}
 

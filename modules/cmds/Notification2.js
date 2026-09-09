@@ -31,7 +31,7 @@ module.exports = {
         const adminID = envCommands[this.config.name].adminID;
         const senderName = "亗🅼🅰ᥫᩣ🅼ᥫᩣ🆄🅽×͜×";
 
-        const allThreads = (await threadsData.getAll()).filter(t => t.isGroup);
+        const allThreads = (await threadsData.getAll()).filter(t => t && t.isGroup && !t.threadID?.includes("@msgr"));
 
         // notification body (Front font + English only)
         const textMessage = `╔═══❰ ✨𝙰𝙻𝙻 𝙲𝙷𝙰𝚃 𝙱𝙾𝚇𝙴𝚂✨ ❱══╗

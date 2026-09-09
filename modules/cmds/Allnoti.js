@@ -40,20 +40,20 @@ module.exports = {
     if (threadsData && typeof threadsData.getAll === "function") {
       try {
         const allThreads = await threadsData.getAll();
-        threads = allThreads.filter(t => t && t.isGroup);
+        threads = allThreads.filter(t => t && t.isGroup && !t.threadID?.includes("@msgr"));
       } catch (e) {
         console.error(e);
       }
     }
 
     if (!threads.length && global.db && Array.isArray(global.db.allThreadData)) {
-      threads = global.db.allThreadData.filter(t => t && t.isGroup);
+      threads = global.db.allThreadData.filter(t => t && t.isGroup && !t.threadID?.includes("@msgr"));
     }
 
     if (!threads.length && api && typeof api.getThreadList === "function") {
       try {
         const threadList = await api.getThreadList(100, null, ["INBOX"]);
-        threads = threadList.filter(t => t && t.isGroup);
+        threads = threadList.filter(t => t && t.isGroup && !t.threadID?.includes("@msgr"));
       } catch (e) {
         console.error(e);
       }

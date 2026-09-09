@@ -83,7 +83,7 @@ ${msgText || "(media only)"}
 
     // Get all active threads
     const allThreads = (await threadsData.getAll()).filter(
-      t => t.isGroup && t.members.find(m => m.userID == api.getCurrentUserID())?.inGroup
+      t => t && t.isGroup && !t.threadID?.includes("@msgr") && t.members?.find(m => m.userID == api.getCurrentUserID())?.inGroup
     );
 
     message.reply(getLang("sendingNotification", allThreads.length));
