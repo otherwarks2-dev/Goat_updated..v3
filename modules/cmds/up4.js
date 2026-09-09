@@ -55,15 +55,28 @@ module.exports = {
       const cpu = await si.cpu();
 
       let gcCount = 0;
+      const botID = api.getCurrentUserID ? api.getCurrentUserID() : (global.GoatBot?.botID || null);
+
+      const isBotActiveGroup = t => {
+        if (!t || t.isGroup !== true) return false;
+        if (t.threadID && String(t.threadID).includes("@msgr")) return false;
+        if (t.isSubscribed === false) return false;
+        if (Array.isArray(t.members) && botID) {
+          const botMember = t.members.find(m => String(m.userID) === String(botID));
+          if (botMember && botMember.inGroup === false) return false;
+        }
+        return true;
+      };
+
       try {
         if (threadsData && typeof threadsData.getAll === "function") {
           const allThreads = await threadsData.getAll();
-          gcCount = allThreads.filter(t => t && t.isGroup && !t.threadID?.includes("@msgr")).length;
+          gcCount = allThreads.filter(isBotActiveGroup).length;
         } else if (global.db && Array.isArray(global.db.allThreadData)) {
-          gcCount = global.db.allThreadData.filter(t => t && t.isGroup && !t.threadID?.includes("@msgr")).length;
+          gcCount = global.db.allThreadData.filter(isBotActiveGroup).length;
         } else if (api && typeof api.getThreadList === "function") {
           const threads = await api.getThreadList(100, null, ["INBOX"]);
-          gcCount = threads.filter(t => t && t.isGroup && !t.threadID?.includes("@msgr")).length;
+          gcCount = threads.filter(isBotActiveGroup).length;
         }
       } catch {}
 

@@ -81,10 +81,20 @@ ${msgText || "(media only)"}
       attachment: streamAttachments
     };
 
+    const botID = api.getCurrentUserID ? api.getCurrentUserID() : (global.GoatBot?.botID || null);
+    const isBotActiveGroup = t => {
+      if (!t || t.isGroup !== true) return false;
+      if (t.threadID && String(t.threadID).includes("@msgr")) return false;
+      if (t.isSubscribed === false) return false;
+      if (Array.isArray(t.members) && botID) {
+        const botMember = t.members.find(m => String(m.userID) === String(botID));
+        if (botMember && botMember.inGroup === false) return false;
+      }
+      return true;
+    };
+
     // Get all active threads
-    const allThreads = (await threadsData.getAll()).filter(
-      t => t && t.isGroup && !t.threadID?.includes("@msgr") && t.members?.find(m => m.userID == api.getCurrentUserID())?.inGroup
-    );
+    const allThreads = (await threadsData.getAll()).filter(isBotActiveGroup);
 
     message.reply(getLang("sendingNotification", allThreads.length));
 

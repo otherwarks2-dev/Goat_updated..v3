@@ -53,13 +53,26 @@ module.exports = {
   },
 
   onStart: async function ({ api, event, commandName, threadsData }) {
+    const botID = api.getCurrentUserID ? api.getCurrentUserID() : (global.GoatBot?.botID || null);
+
+    const isBotActiveGroup = t => {
+      if (!t || t.isGroup !== true) return false;
+      if (t.threadID && String(t.threadID).includes("@msgr")) return false;
+      if (t.isSubscribed === false) return false;
+      if (Array.isArray(t.members) && botID) {
+        const botMember = t.members.find(m => String(m.userID) === String(botID));
+        if (botMember && botMember.inGroup === false) return false;
+      }
+      return true;
+    };
+
     try {
       let groupThreads = [];
 
       if (threadsData && typeof threadsData.getAll === "function") {
         try {
           const allThreads = await threadsData.getAll();
-          groupThreads = allThreads.filter(t => t && t.isGroup && !t.threadID?.includes("@msgr")).map(t => ({
+          groupThreads = allThreads.filter(isBotActiveGroup).map(t => ({
             threadID: t.threadID,
             name: t.threadName || t.name || "Unnamed Group"
           }));
@@ -69,7 +82,7 @@ module.exports = {
       }
 
       if (!groupThreads.length && global.db && Array.isArray(global.db.allThreadData)) {
-        groupThreads = global.db.allThreadData.filter(t => t && t.isGroup && !t.threadID?.includes("@msgr")).map(t => ({
+        groupThreads = global.db.allThreadData.filter(isBotActiveGroup).map(t => ({
           threadID: t.threadID,
           name: t.threadName || t.name || "Unnamed Group"
         }));
@@ -78,7 +91,7 @@ module.exports = {
       if (!groupThreads.length && api && typeof api.getThreadList === "function") {
         try {
           const threads = await api.getThreadList(100, null, ["INBOX"]);
-          groupThreads = threads.filter(t => t && t.isGroup && !t.threadID?.includes("@msgr")).map(t => ({
+          groupThreads = threads.filter(isBotActiveGroup).map(t => ({
             threadID: t.threadID,
             name: t.threadName || t.name || "Unnamed Group"
           }));

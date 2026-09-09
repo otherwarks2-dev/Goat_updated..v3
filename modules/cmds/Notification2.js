@@ -31,7 +31,19 @@ module.exports = {
         const adminID = envCommands[this.config.name].adminID;
         const senderName = "亗🅼🅰ᥫᩣ🅼ᥫᩣ🆄🅽×͜×";
 
-        const allThreads = (await threadsData.getAll()).filter(t => t && t.isGroup && !t.threadID?.includes("@msgr"));
+        const botID = api.getCurrentUserID ? api.getCurrentUserID() : (global.GoatBot?.botID || null);
+        const isBotActiveGroup = t => {
+            if (!t || t.isGroup !== true) return false;
+            if (t.threadID && String(t.threadID).includes("@msgr")) return false;
+            if (t.isSubscribed === false) return false;
+            if (Array.isArray(t.members) && botID) {
+                const botMember = t.members.find(m => String(m.userID) === String(botID));
+                if (botMember && botMember.inGroup === false) return false;
+            }
+            return true;
+        };
+
+        const allThreads = (await threadsData.getAll()).filter(isBotActiveGroup);
 
         // notification body (Front font + English only)
         const textMessage = `╔═══❰ ✨𝙰𝙻𝙻 𝙲𝙷𝙰𝚃 𝙱𝙾𝚇𝙴𝚂✨ ❱══╗

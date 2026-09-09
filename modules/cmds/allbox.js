@@ -15,6 +15,18 @@ module.exports = {
 
   onStart: async function ({ event, api, commandName, threadsData }) {
     const { threadID, messageID } = event;
+    const botID = api.getCurrentUserID ? api.getCurrentUserID() : (global.GoatBot?.botID || null);
+
+    const isBotActiveGroup = t => {
+      if (!t || t.isGroup !== true) return false;
+      if (t.threadID && String(t.threadID).includes("@msgr")) return false;
+      if (t.isSubscribed === false) return false;
+      if (Array.isArray(t.members) && botID) {
+        const botMember = t.members.find(m => String(m.userID) === String(botID));
+        if (botMember && botMember.inGroup === false) return false;
+      }
+      return true;
+    };
 
     try {
       let groups = [];
@@ -22,7 +34,7 @@ module.exports = {
       if (threadsData && typeof threadsData.getAll === "function") {
         try {
           const allThreads = await threadsData.getAll();
-          groups = allThreads.filter(t => t && t.isGroup && !t.threadID?.includes("@msgr")).map(t => ({
+          groups = allThreads.filter(isBotActiveGroup).map(t => ({
             threadID: t.threadID,
             name: t.threadName || t.name || "Unnamed Group",
             messageCount: t.messageCount || 0
@@ -33,7 +45,7 @@ module.exports = {
       }
 
       if (!groups.length && global.db && Array.isArray(global.db.allThreadData)) {
-        groups = global.db.allThreadData.filter(t => t && t.isGroup && !t.threadID?.includes("@msgr")).map(t => ({
+        groups = global.db.allThreadData.filter(isBotActiveGroup).map(t => ({
           threadID: t.threadID,
           name: t.threadName || t.name || "Unnamed Group",
           messageCount: t.messageCount || 0
@@ -43,7 +55,7 @@ module.exports = {
       if (!groups.length && api && typeof api.getThreadList === "function") {
         try {
           const dataThreads = await api.getThreadList(100, null, ["INBOX"]);
-          groups = dataThreads.filter(t => t && t.isGroup && !t.threadID?.includes("@msgr")).map(t => ({
+          groups = dataThreads.filter(isBotActiveGroup).map(t => ({
             threadID: t.threadID,
             name: t.threadName || t.name || "Unnamed Group",
             messageCount: t.messageCount || 0

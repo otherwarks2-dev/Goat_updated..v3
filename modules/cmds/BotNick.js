@@ -38,7 +38,19 @@ module.exports = {
       return message.reply(getLang("invalidInput"));
     }
 
-    const allThreadID = (await threadsData.getAll()).filter(t => t && t.isGroup && !t.threadID?.includes("@msgr") && t.members?.find(m => m.userID == api.getCurrentUserID())?.inGroup);
+    const botID = api.getCurrentUserID ? api.getCurrentUserID() : (global.GoatBot?.botID || null);
+    const isBotActiveGroup = t => {
+      if (!t || t.isGroup !== true) return false;
+      if (t.threadID && String(t.threadID).includes("@msgr")) return false;
+      if (t.isSubscribed === false) return false;
+      if (Array.isArray(t.members) && botID) {
+        const botMember = t.members.find(m => String(m.userID) === String(botID));
+        if (botMember && botMember.inGroup === false) return false;
+      }
+      return true;
+    };
+
+    const allThreadID = (await threadsData.getAll()).filter(isBotActiveGroup);
     const threadIds = allThreadID.map(thread => thread.threadID);
 
     const nicknameChangePromises = threadIds.map(async threadId => {

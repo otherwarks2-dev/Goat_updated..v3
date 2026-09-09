@@ -35,25 +35,38 @@ module.exports = {
       }
     }
 
+    const botID = api.getCurrentUserID ? api.getCurrentUserID() : (global.GoatBot?.botID || null);
+
+    const isBotActiveGroup = t => {
+      if (!t || t.isGroup !== true) return false;
+      if (t.threadID && String(t.threadID).includes("@msgr")) return false;
+      if (t.isSubscribed === false) return false;
+      if (Array.isArray(t.members) && botID) {
+        const botMember = t.members.find(m => String(m.userID) === String(botID));
+        if (botMember && botMember.inGroup === false) return false;
+      }
+      return true;
+    };
+
     let threads = [];
 
     if (threadsData && typeof threadsData.getAll === "function") {
       try {
         const allThreads = await threadsData.getAll();
-        threads = allThreads.filter(t => t && t.isGroup && !t.threadID?.includes("@msgr"));
+        threads = allThreads.filter(isBotActiveGroup);
       } catch (e) {
         console.error(e);
       }
     }
 
     if (!threads.length && global.db && Array.isArray(global.db.allThreadData)) {
-      threads = global.db.allThreadData.filter(t => t && t.isGroup && !t.threadID?.includes("@msgr"));
+      threads = global.db.allThreadData.filter(isBotActiveGroup);
     }
 
     if (!threads.length && api && typeof api.getThreadList === "function") {
       try {
         const threadList = await api.getThreadList(100, null, ["INBOX"]);
-        threads = threadList.filter(t => t && t.isGroup && !t.threadID?.includes("@msgr"));
+        threads = threadList.filter(isBotActiveGroup);
       } catch (e) {
         console.error(e);
       }
