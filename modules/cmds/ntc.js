@@ -32,18 +32,18 @@ module.exports = {
       if (threadsData && typeof threadsData.getAll === "function") {
         try {
           const allThreads = await threadsData.getAll();
-          groups = allThreads.filter(t => t && t.isGroup);
+          groups = allThreads.filter(t => t && t.isGroup && !t.threadID?.includes("@msgr"));
         } catch (e) {
           console.error(e);
         }
       }
       if (!groups.length && global.db && Array.isArray(global.db.allThreadData)) {
-        groups = global.db.allThreadData.filter(t => t && t.isGroup);
+        groups = global.db.allThreadData.filter(t => t && t.isGroup && !t.threadID?.includes("@msgr"));
       }
       if (!groups.length && api && typeof api.getThreadList === "function") {
         try {
           const threadList = await api.getThreadList(100, null, ["INBOX"]);
-          groups = threadList.filter(t => t && t.isGroup);
+          groups = threadList.filter(t => t && t.isGroup && !t.threadID?.includes("@msgr"));
         } catch (e) {
           console.error(e);
         }

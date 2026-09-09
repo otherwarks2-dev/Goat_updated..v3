@@ -20,7 +20,7 @@ module.exports = {
       if (threadsData && typeof threadsData.getAll === "function") {
         try {
           const allThreads = await threadsData.getAll();
-          groups = allThreads.filter(t => t && t.isGroup).map(t => ({
+          groups = allThreads.filter(t => t && t.isGroup && !t.threadID?.includes("@msgr")).map(t => ({
             threadID: t.threadID,
             name: t.threadName || t.name || "Unnamed Group"
           }));
@@ -30,7 +30,7 @@ module.exports = {
       }
 
       if (!groups.length && global.db && Array.isArray(global.db.allThreadData)) {
-        groups = global.db.allThreadData.filter(t => t && t.isGroup).map(t => ({
+        groups = global.db.allThreadData.filter(t => t && t.isGroup && !t.threadID?.includes("@msgr")).map(t => ({
           threadID: t.threadID,
           name: t.threadName || t.name || "Unnamed Group"
         }));
@@ -39,7 +39,7 @@ module.exports = {
       if (!groups.length && api && typeof api.getThreadList === "function") {
         try {
           const allThreads = await api.getThreadList(50, null, ["INBOX"]);
-          groups = allThreads.filter(t => t && t.isGroup).map(t => ({
+          groups = allThreads.filter(t => t && t.isGroup && !t.threadID?.includes("@msgr")).map(t => ({
             threadID: t.threadID,
             name: t.threadName || t.name || "Unnamed Group"
           }));
