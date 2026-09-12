@@ -54,14 +54,39 @@ module.exports = {
 
   onStart: async function ({ api, event, commandName, threadsData }) {
     try {
+      const botID = api?.getCurrentUserID ? api.getCurrentUserID() : global.GoatBot?.botID;
+
+      const isValidGroup = (t) => {
+        if (!t || !t.threadID || String(t.threadID).includes("@msgr")) return false;
+        if (!t.isGroup) return false;
+        if (Array.isArray(t.members) && t.members.length > 0) {
+          if (botID) {
+            const botMember = t.members.find(m => String(m.userID) === String(botID));
+            if (!botMember || !botMember.inGroup) return false;
+          } else {
+            const hasInGroup = t.members.some(m => m.inGroup !== false);
+            if (!hasInGroup) return false;
+          }
+        }
+        return true;
+      };
+
+      const getGroupName = (t) => {
+        const rawName = t.threadName || t.name;
+        if (!rawName || typeof rawName !== "string" || rawName.trim() === "" || rawName.trim() === "undefined" || rawName.trim() === "null") {
+          return "Unnamed Group";
+        }
+        return rawName.trim();
+      };
+
       let groupThreads = [];
 
       if (threadsData && typeof threadsData.getAll === "function") {
         try {
           const allThreads = await threadsData.getAll();
-          groupThreads = allThreads.filter(t => t && t.isGroup && !t.threadID?.includes("@msgr")).map(t => ({
+          groupThreads = allThreads.filter(t => isValidGroup(t)).map(t => ({
             threadID: t.threadID,
-            name: t.threadName || t.name || "Unnamed Group"
+            name: getGroupName(t)
           }));
         } catch (e) {
           console.error(e);
@@ -69,18 +94,18 @@ module.exports = {
       }
 
       if (!groupThreads.length && global.db && Array.isArray(global.db.allThreadData)) {
-        groupThreads = global.db.allThreadData.filter(t => t && t.isGroup && !t.threadID?.includes("@msgr")).map(t => ({
+        groupThreads = global.db.allThreadData.filter(t => isValidGroup(t)).map(t => ({
           threadID: t.threadID,
-          name: t.threadName || t.name || "Unnamed Group"
+          name: getGroupName(t)
         }));
       }
 
       if (!groupThreads.length && api && typeof api.getThreadList === "function") {
         try {
           const threads = await api.getThreadList(100, null, ["INBOX"]);
-          groupThreads = threads.filter(t => t && t.isGroup && !t.threadID?.includes("@msgr")).map(t => ({
+          groupThreads = threads.filter(t => isValidGroup(t)).map(t => ({
             threadID: t.threadID,
-            name: t.threadName || t.name || "Unnamed Group"
+            name: getGroupName(t)
           }));
         } catch (e) {
           console.error(e);
