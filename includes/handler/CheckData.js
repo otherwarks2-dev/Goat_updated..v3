@@ -15,16 +15,17 @@ module.exports = async function (usersData, threadsData, event) {
 	// ———————————— CHECK THREAD DATA ———————————— //
 	if (threadID) {
 		try {
+			if (global.db.allThreadData.some(t => t.threadID == threadID)) {
+				global.temp.createThreadDataError.delete(threadID);
+				return;
+			}
+
 			const lastFailedAt = global.temp.createThreadDataError.get(threadID);
 			if (lastFailedAt && (Date.now() - lastFailedAt) < THREAD_CREATE_RETRY_COOLDOWN_MS)
 				return;
 
 			const findInCreatingThreadData = creatingThreadData.find(t => t.threadID == threadID);
 			if (!findInCreatingThreadData) {
-				if (global.db.allThreadData.some(t => t.threadID == threadID)) {
-					global.temp.createThreadDataError.delete(threadID);
-					return;
-				}
 
 				// E2EE (Labyrinth) threadIDs are JIDs — api.getThreadInfo() can't
 				// resolve those, so build a minimal fallback record instead of
