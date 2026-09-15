@@ -218,7 +218,23 @@ module.exports = async function (databaseType, threadModel, api, fakeGraphql) {
 						threadType: 1 // default to 1-1 DM; caller can pass a real threadInfo override to mark it as a group (threadType: 2)
 					};
 				}
-				threadInfo = threadInfo || await api.getThreadInfo(threadID);
+				if (!threadInfo) {
+					try {
+						threadInfo = await api.getThreadInfo(threadID);
+					} catch (err) {
+						threadInfo = {
+							threadName: "Group Chat",
+							userInfo: [],
+							adminIDs: [],
+							nicknames: {},
+							emoji: null,
+							imageSrc: null,
+							approvalMode: null,
+							threadTheme: null,
+							threadType: 2
+						};
+					}
+				}
 				const { threadName, userInfo, adminIDs } = threadInfo;
 				const newAdminsIDs = adminIDs.reduce(function (_, b) {
 					_.push(b.id);
@@ -306,7 +322,13 @@ module.exports = async function (databaseType, threadModel, api, fakeGraphql) {
 					if (!newThreadInfo && isJidThreadID) {
 						return resolve(threadInfo);
 					}
-					newThreadInfo = newThreadInfo || await api.getThreadInfo(threadID);
+					if (!newThreadInfo) {
+						try {
+							newThreadInfo = await api.getThreadInfo(threadID);
+						} catch (err) {
+							return resolve(threadInfo);
+						}
+					}
 					const { userInfo, adminIDs, nicknames } = newThreadInfo;
 					let oldMembers = threadInfo.members;
 					const newMembers = [];

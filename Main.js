@@ -226,12 +226,19 @@ async function startBot() {
 		await require("./includes/rX/loadScripts.js")(api, threadModel, userModel, dashBoardModel, globalModel, threadsData, usersData, dashBoardData, globalData, c => c);
 
 		function callBackListen(err, event) {
-			if (err) { log.err("LISTEN", "Connection Error, attempting restart..."); return setTimeout(() => startBot(), 5000); }
+			if (err) {
+				log.err("LISTEN", "Connection Error, attempting restart...", err.message || err);
+				return setTimeout(() => startBot(), 5000);
+			}
 
-			const handlerAction = require("./includes/listen.js")(
-				api, threadModel, userModel, dashBoardModel, globalModel, usersData, threadsData, dashBoardData, globalData
-			);
-			handlerAction(event);
+			try {
+				const handlerAction = require("./includes/listen.js")(
+					api, threadModel, userModel, dashBoardModel, globalModel, usersData, threadsData, dashBoardData, globalData
+				);
+				handlerAction(event);
+			} catch (e) {
+				log.err("LISTEN", "Error processing listener event:", e.message || e);
+			}
 		}
 
 		global.GoatBot.Listening = api.listenMqtt(callBackListen);

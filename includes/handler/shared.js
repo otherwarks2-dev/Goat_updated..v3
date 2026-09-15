@@ -274,9 +274,13 @@ async function buildContext({ api, threadModel, userModel, dashBoardModel, globa
     // true Facebook thread_type), prefer that value instead. This is what
     // fixes E2EE inbox/DM chats that were being silently treated as groups
     // (and hitting group-only checks like adminOnly) because of the guess.
-    let resolvedIsGroup = isGroup;
-    if (threadData && typeof threadData.isGroup === "boolean") resolvedIsGroup = threadData.isGroup;
-    if (resolvedIsGroup !== isGroup) event.isGroup = resolvedIsGroup;
+    let resolvedIsGroup = isGroup === true || (threadData && threadData.isGroup === true);
+    if (threadData) {
+        if (typeof threadData.isGroup !== "boolean") {
+            threadData.isGroup = resolvedIsGroup;
+        }
+    }
+    event.isGroup = resolvedIsGroup;
 
     if (typeof threadData.settings.hideNotiMessage == "object") hideNotiMessage = threadData.settings.hideNotiMessage;
 
