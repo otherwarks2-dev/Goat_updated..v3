@@ -86,6 +86,9 @@ module.exports = (
 	);
 
 	return async function listener(event) {
+		// Update watchdog timestamp on every event so Main.js knows MQTT is alive
+		global._lastMqttEventAt = Date.now();
+
 		// Populate E2EE message map to robustly support unsend and reaction events
 		if (event.isE2EE && event.messageID && event.threadID) {
 			global._e2eeMessageMap = global._e2eeMessageMap || new Map();
@@ -106,6 +109,8 @@ module.exports = (
 			}
 			if (event.type === "e2ee_disconnected") {
 				console.log(tag + "\x1b[33m⚠️   E2EE disconnected — attempting reconnect...\x1b[0m");
+				// Emit the disconnect event so Main.js auto-reconnect hook fires
+				try { api.emit?.("e2ee_disconnected"); } catch {}
 				return;
 			}
 		}

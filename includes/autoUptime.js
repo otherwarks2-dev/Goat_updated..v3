@@ -16,8 +16,14 @@ let myUrl = config.autoUptime.url || `https://${process.env.REPL_OWNER
 myUrl.includes('localhost') && (myUrl = myUrl.replace('https', 'http'));
 myUrl += '/uptime';
 
+// FIX: The original code used setInterval INSIDE a setTimeout, which created
+// a NEW interval every time autoUptime() was called — causing runaway memory
+// leaks and duplicate pings. Now we use a simple recursive setTimeout so
+// only one ping fires at a time, and the interval stays consistent.
 let status = 'ok';
-setTimeout(async function autoUptime() {
+const INTERVAL_MS = (config.autoUptime.timeInterval || 180) * 1000;
+
+async function autoUptime() {
 	try {
 		await axios.get(myUrl);
 		if (status != 'ok') {
@@ -28,19 +34,22 @@ setTimeout(async function autoUptime() {
 	}
 	catch (e) {
 		const err = e.response?.data || e;
-		if (status != 'ok')
-			return;
-		status = 'failed';
-
-		if (err.statusAccountBot == "can't login") {
-			log.err("UPTIME", "Can't login account bot");
-			// Custome notification here
-		}
-		else if (err.statusAccountBot == "block spam") {
-			log.err("UPTIME", "Your account is blocked");
-			// Custome notification here
+		if (status == 'ok') {
+			status = 'failed';
+			if (err.statusAccountBot == "can't login") {
+				log.err("UPTIME", "Can't login account bot");
+				// Custome notification here
+			}
+			else if (err.statusAccountBot == "block spam") {
+				log.err("UPTIME", "Your account is blocked");
+				// Custome notification here
+			}
 		}
 	}
-	global.timeOutUptime = setInterval(autoUptime, config.autoUptime.timeInterval);
-}, (config.autoUptime.timeInterval || 180) * 1000);
+	// Schedule next ping (recursive setTimeout, NOT setInterval inside callback)
+	global.timeOutUptime = setTimeout(autoUptime, INTERVAL_MS);
+}
+
+// First ping after the configured interval
+global.timeOutUptime = setTimeout(autoUptime, INTERVAL_MS);
 log.info("AUTO UPTIME", getText("autoUptime", "autoUptimeTurnedOn", myUrl));

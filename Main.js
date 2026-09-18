@@ -168,7 +168,15 @@ function filterKeysAppState(appState) {
 }
 
 async function stopListening() {
-	return new Promise(resolve => global.GoatBot.fcaApi?.stopListening?.(() => resolve()) || resolve());
+	return new Promise(resolve => {
+		try {
+			global.GoatBot.fcaApi?.stopListening?.(() => resolve()) || resolve();
+		} catch {
+			resolve();
+		} finally {
+			global.GoatBot.Listening = null;
+		}
+	});
 }
 
 async function safeGetUserName(userID, api) {
@@ -225,17 +233,35 @@ async function startBot() {
 		await require("./includes/custom.js")({ api, threadsData, usersData, globalData, getText });
 		await require("./includes/rX/loadScripts.js")(api, threadModel, userModel, dashBoardModel, globalModel, threadsData, usersData, dashBoardData, globalData, c => c);
 
+		// Build the listener handler ONCE — requiring + invoking listen.js on
+		// every single event was creating a new handler closure each time,
+		// which re-wired all the internal state and caused subtle state bugs.
+		const listenerHandler = require("./includes/listen.js")(
+			api, threadModel, userModel, dashBoardModel, globalModel, usersData, threadsData, dashBoardData, globalData
+		);
+
+		// Track reconnect attempts for exponential backoff
+		let reconnectAttempts = 0;
+		const MAX_RECONNECT_DELAY = 60000; // cap at 60s
+
+		function scheduleReconnect() {
+			const delay = Math.min(5000 * Math.pow(2, reconnectAttempts), MAX_RECONNECT_DELAY);
+			reconnectAttempts++;
+			log.warn("LISTEN", `Reconnecting in ${delay / 1000}s (attempt #${reconnectAttempts})...`);
+			setTimeout(() => startBot(), delay);
+		}
+
 		function callBackListen(err, event) {
 			if (err) {
 				log.err("LISTEN", "Connection Error, attempting restart...", err.message || err);
-				return setTimeout(() => startBot(), 5000);
+				return scheduleReconnect();
 			}
 
+			// Reset backoff on a successful event
+			reconnectAttempts = 0;
+
 			try {
-				const handlerAction = require("./includes/listen.js")(
-					api, threadModel, userModel, dashBoardModel, globalModel, usersData, threadsData, dashBoardData, globalData
-				);
-				handlerAction(event);
+				listenerHandler(event);
 			} catch (e) {
 				log.err("LISTEN", "Error processing listener event:", e.message || e);
 			}
@@ -249,16 +275,62 @@ async function startBot() {
 		// messages/reactions/receipts are decrypted internally but never
 		// forwarded to callBackListen, and no command ever fires even
 		// though outgoing sends to e2ee threads work fine.
-		if (typeof api.connectE2EE === "function") {
+		//
+		// FIX: We also set up an auto-reconnect for E2EE disconnects so
+		// that groups don't go silent after 1-2 hours. The E2EE bridge can
+		// drop its WS connection without the main MQTT listener dropping,
+		// which is why group messages stop working while inbox (non-E2EE)
+		// keeps running. We detect the disconnect event and reconnect the
+		// bridge without a full bot restart.
+		let e2eeReconnectTimer = null;
+
+		async function connectE2EEWithRetry(attempt = 0) {
+			if (typeof api.connectE2EE !== "function") return;
 			try {
 				await api.connectE2EE(callBackListen);
 				log.info("E2EE", "E2EE bridge connected and wired to the listener.");
 			} catch (e) {
-				log.warn("E2EE", "Failed to connect E2EE bridge:", e && e.message ? e.message : e);
+				const delay = Math.min(5000 * Math.pow(2, attempt), 60000);
+				log.warn("E2EE", `Failed to connect E2EE bridge (attempt #${attempt + 1}), retrying in ${delay / 1000}s:`, e && e.message ? e.message : e);
+				e2eeReconnectTimer = setTimeout(() => connectE2EEWithRetry(attempt + 1), delay);
 			}
 		}
 
+		// Hook into E2EE disconnect events so we can auto-reconnect the bridge
+		// when Messenger's E2EE WS drops (this is what causes groups to go
+		// silent after a while while inbox keeps working).
+		if (typeof api.on === "function") {
+			api.on("e2ee_disconnected", () => {
+				log.warn("E2EE", "E2EE bridge disconnected — scheduling reconnect...");
+				if (e2eeReconnectTimer) clearTimeout(e2eeReconnectTimer);
+				e2eeReconnectTimer = setTimeout(() => connectE2EEWithRetry(0), 3000);
+			});
+		}
+
+		await connectE2EEWithRetry(0);
+
 		log.master("SUCCESS", "Bot is now active and listening to messages!");
+
+		// ── MQTT KEEPALIVE WATCHDOG ──────────────────────────────────────────
+		// The MQTT connection can silently stall after 1-2 hours (Facebook's
+		// server drops the WS without sending a proper DISCONNECT frame).
+		// When that happens, the bot appears alive (no error fires) but stops
+		// receiving ALL messages — groups and inbox both go dead.
+		// We track the timestamp of the last received event and restart the bot
+		// if nothing arrives within the watchdog window (10 minutes default).
+		global._lastMqttEventAt = Date.now();
+		const WATCHDOG_INTERVAL_MS = 5 * 60 * 1000;  // check every 5 min
+		const WATCHDOG_TIMEOUT_MS  = 10 * 60 * 1000; // restart if silent 10 min
+
+		if (global._mqttWatchdog) clearInterval(global._mqttWatchdog);
+		global._mqttWatchdog = setInterval(() => {
+			const silent = Date.now() - global._lastMqttEventAt;
+			if (silent > WATCHDOG_TIMEOUT_MS) {
+				log.warn("WATCHDOG", `No MQTT event for ${Math.round(silent / 60000)} min — reconnecting bot...`);
+				clearInterval(global._mqttWatchdog);
+				startBot();
+			}
+		}, WATCHDOG_INTERVAL_MS);
 	});
 }
 
